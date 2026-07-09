@@ -1,6 +1,6 @@
 <template>
   <!-- Top App Bar -->
-  <v-app-bar color="primary" dark class="dashboard-header" elevation="2">
+  <v-app-bar color="#E6611D" dark class="dashboard-header" elevation="2">
     <v-app-bar-nav-icon @click="toggleSidebar"></v-app-bar-nav-icon>
 
     <v-toolbar-title class="ml-3 font-weight-bold">{{ userName }}</v-toolbar-title>

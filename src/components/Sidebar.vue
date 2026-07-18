@@ -70,8 +70,8 @@
         <v-list-item
           @click="setActiveMenu('TherapySessions')"
           :active="activeMenu === 'TherapySessions'"
-          title="Therapy Sessions"
-          to="/therapy-sessions"
+          title="School Sessions"
+          to="/school-sessions"
         ></v-list-item>
       </v-list-group>
 

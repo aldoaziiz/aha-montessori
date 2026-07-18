@@ -204,22 +204,13 @@
 
           <v-card-text>
             <v-row>
-              <v-col cols="12">
-                <v-textarea
-                  v-model="form.registration.complaint"
-                  label="Problem"
-                  rows="2"
-                  :rules="[rules.required]"
-                />
-              </v-col>
-
               <v-col cols="12" md="6">
                 <v-autocomplete
                   v-model="form.registration.clinic_id"
                   :items="clinics"
                   item-title="name"
                   item-value="id"
-                  label="Clinic"
+                  label="AHA! School"
                   :rules="[rules.required]"
                   clearable
                 />
@@ -235,6 +226,14 @@
                   :rules="[rules.required]"
                   clearable
                 />
+
+                <div v-if="recommendedProgramCategory" class="text-caption text-grey mt-1">
+                  Child age
+                  <strong>{{ age }}</strong>
+                  is suitable for
+                  <strong>{{ recommendedProgramCategory }}</strong>
+                  .
+                </div>
               </v-col>
 
               <v-col cols="12" md="6">
@@ -275,6 +274,18 @@
                   </template>
                 </v-autocomplete>
               </v-col>
+
+              <v-select
+                v-model="form.registration.program_duration_months"
+                label="Learning Period"
+                :items="[
+                  { title: '6 Months', value: 6 },
+                  { title: '12 Months', value: 12 },
+                ]"
+                item-title="title"
+                item-value="value"
+                variant="outlined"
+              />
             </v-row>
           </v-card-text>
         </v-card>
@@ -353,6 +364,7 @@ const form = ref({
     program_category_id: null,
     program_ids: [],
     payer_id: null,
+    program_duration_months: 6,
   },
 })
 
@@ -394,6 +406,35 @@ const filteredPrograms = computed(() => {
       Number(program.program_category_id) === Number(categoryId) &&
       Number(program.payer_id) === Number(payerId),
   )
+})
+
+const recommendedProgramCategory = computed(() => {
+  if (!form.value.child.birth_date) return ''
+
+  const birth = new Date(form.value.child.birth_date)
+  if (isNaN(birth.getTime())) return ''
+
+  const today = new Date()
+
+  let years = today.getFullYear() - birth.getFullYear()
+  let months = today.getMonth() - birth.getMonth()
+
+  if (months < 0 || (months === 0 && today.getDate() < birth.getDate())) {
+    years--
+    months += 12
+  }
+
+  const totalMonths = years * 12 + months
+
+  if (totalMonths >= 18 && totalMonths <= 35) {
+    return 'Toddler'
+  }
+
+  if (totalMonths >= 36 && totalMonths <= 72) {
+    return 'Kinder'
+  }
+
+  return ''
 })
 
 /* =========================

@@ -3,9 +3,9 @@
     <!-- PAGE HEADER -->
     <div class="d-flex justify-space-between align-center mb-6">
       <div>
-        <h1 class="text-h4 font-weight-bold">Therapy Sessions</h1>
+        <h1 class="text-h4 font-weight-bold">School Sessions</h1>
 
-        <div class="text-body-2 text-grey">Therapy operational schedules</div>
+        <div class="text-body-2 text-grey">School session schedules</div>
       </div>
     </div>
 
@@ -38,14 +38,13 @@
             />
           </v-col>
 
-          <!-- THERAPIST -->
           <v-col cols="12" md="3">
             <v-select
-              v-model="filters.therapist_id"
-              :items="therapists"
+              v-model="filters.therapy_session_status_id"
+              :items="therapySessionStatuses"
               item-title="name"
               item-value="id"
-              label="Therapist"
+              label="Session Status"
               variant="outlined"
               density="comfortable"
               hide-details
@@ -105,12 +104,6 @@
           {{ item.start_time?.slice(0, 5) }}
           -
           {{ item.end_time?.slice(0, 5) }}
-        </template>
-
-        <template v-slot:item.therapist="{ item }">
-          <div>
-            {{ item.therapist?.name || '-' }}
-          </div>
         </template>
 
         <!-- STATUS -->
@@ -183,40 +176,36 @@
     <v-card>
       <v-card-title>Add Session</v-card-title>
       <v-card-text class="pt-4">
-        <v-select
-          class="mb-2"
-          v-model="sessionForm.therapist_id"
-          :items="therapists"
-          item-title="name"
-          item-value="id"
-          label="Therapist"
-          variant="outlined"
-        />
+        <div
+          v-if="loadingSessionDialog"
+          class="d-flex flex-column align-center justify-center py-10"
+        >
+          <v-progress-circular indeterminate color="primary" size="48" />
 
-        <v-text-field
-          class="mb-2"
-          v-model="sessionForm.therapy_date"
-          type="date"
-          label="Date"
-          variant="outlined"
-        />
+          <div class="mt-4 text-medium-emphasis">Loading session...</div>
+        </div>
 
-        <v-select
-          v-model="sessionForm.session_time"
-          :items="timeSlots.filter((slot) => !slot.disabled)"
-          item-title="label"
-          item-value="label"
-          label="Session Time"
-          variant="outlined"
-        />
+        <template v-else>
+          <v-text-field
+            v-model="sessionForm.therapy_date"
+            type="date"
+            label="Date"
+            variant="outlined"
+            class="mb-2"
+          />
 
-        <v-textarea
-          class="mb-2"
-          v-model="sessionForm.notes"
-          label="Notes"
-          rows="2"
-          variant="outlined"
-        />
+          <v-select
+            v-model="sessionForm.session_time_id"
+            :items="programCategorySessionTimes"
+            item-title="label"
+            item-value="id"
+            label="Session Time"
+            variant="outlined"
+            class="mb-2"
+          />
+
+          <v-textarea v-model="sessionForm.notes" label="Notes" rows="2" variant="outlined" />
+        </template>
       </v-card-text>
 
       <v-card-actions>
@@ -245,7 +234,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, onUnmounted } from 'vue'
+import { ref, onMounted, watch, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import debounce from 'lodash/debounce'
 import api from '@/services/api'
@@ -262,7 +251,6 @@ const router = useRouter()
 
 const initialized = ref(false)
 const sessions = ref([])
-const therapists = ref([])
 const loading = ref(false)
 const search = ref('')
 const page = ref(1)
@@ -277,12 +265,16 @@ const pageActionLoading = ref(false)
 const resettingFilters = ref(false)
 const sessionDialog = ref(false)
 const editingSessionId = ref(null)
+const therapySessionStatuses = ref([])
+const registration = ref(null)
+const programCategorySessionTimes = ref([])
+const loadingSessionDialog = ref(false)
 
 const sessionForm = ref({
   registration_id: null,
   therapist_id: null,
   therapy_date: '',
-  session_time: null,
+  session_time_id: null,
   notes: '',
 })
 
@@ -291,6 +283,7 @@ const pageActionText = ref('Loading...')
 const filters = ref({
   date: '',
   therapist_id: null,
+  therapy_session_status_id: null,
 })
 
 // ======================
@@ -302,7 +295,6 @@ const headers = [
   { title: 'Child', key: 'child' },
   { title: 'Date', key: 'therapy_date' },
   { title: 'Time', key: 'time' },
-  { title: 'Therapist', key: 'therapist' },
   { title: 'Session Status', key: 'status' },
   { title: 'Notes', key: 'notes' },
   {
@@ -310,69 +302,6 @@ const headers = [
     key: 'actions',
     sortable: false,
     align: 'center',
-  },
-]
-
-const timeSlots = [
-  {
-    label: '08:00 - 09:00',
-    start: '08:00',
-    end: '09:00',
-    disabled: false,
-  },
-  {
-    label: '09:00 - 10:00',
-    start: '09:00',
-    end: '10:00',
-    disabled: false,
-  },
-  {
-    label: '10:00 - 11:00',
-    start: '10:00',
-    end: '11:00',
-    disabled: false,
-  },
-  {
-    label: '11:00 - 12:00',
-    start: '11:00',
-    end: '12:00',
-    disabled: false,
-  },
-  {
-    label: '12:00 - 13:00 (Break)',
-    start: '12:00',
-    end: '13:00',
-    disabled: true,
-  },
-  {
-    label: '13:00 - 14:00',
-    start: '13:00',
-    end: '14:00',
-    disabled: false,
-  },
-  {
-    label: '14:00 - 15:00',
-    start: '14:00',
-    end: '15:00',
-    disabled: false,
-  },
-  {
-    label: '15:00 - 16:00',
-    start: '15:00',
-    end: '16:00',
-    disabled: false,
-  },
-  {
-    label: '16:00 - 17:00',
-    start: '16:00',
-    end: '17:00',
-    disabled: false,
-  },
-  {
-    label: '17:00 - 18:00',
-    start: '17:00',
-    end: '18:00',
-    disabled: false,
   },
 ]
 
@@ -385,7 +314,7 @@ const closeSessionDialog = () => {
     registration_id: null,
     therapist_id: null,
     therapy_date: '',
-    session_time: null,
+    session_time_id: null,
     notes: '',
   }
 }
@@ -406,6 +335,29 @@ const getStatusColor = (status) => {
   }
 }
 
+const programCategoryId = computed(() => {
+  return registration.value?.programs?.[0]?.program_category?.id ?? null
+})
+
+const selectedSessionTime = computed(() => {
+  return (
+    programCategorySessionTimes.value.find(
+      (item) => item.id === sessionForm.value.session_time_id,
+    ) ?? null
+  )
+})
+
+const fetchProgramCategorySessionTimes = async () => {
+  if (!programCategoryId.value) return
+
+  const res = await api.get(`/program-categories/${programCategoryId.value}/session-times`)
+
+  programCategorySessionTimes.value = res.data.data.map((item) => ({
+    ...item,
+    label: `${item.session_name} (${item.start_time.substring(0, 5)} - ${item.end_time.substring(0, 5)})`,
+  }))
+}
+
 // ======================
 // FETCH SESSIONS
 // ======================
@@ -418,11 +370,10 @@ const fetchSessions = async () => {
       params: {
         page: page.value,
         per_page: itemsPerPage.value,
-
         search: search.value,
-
         therapy_date: filters.value.date,
-        therapist_id: filters.value.therapist_id,
+        therapist_id: null,
+        therapy_session_status_id: filters.value.therapy_session_status_id,
         sort_by: sortBy.value[0]?.key,
         sort_order: sortBy.value[0]?.order,
       },
@@ -437,23 +388,18 @@ const fetchSessions = async () => {
   }
 }
 
-// ======================
-// FETCH THERAPISTS
-// ======================
+const fetchTherapySessionStatuses = async () => {
+  const res = await api.get('/therapy-session-statuses')
 
-const fetchTherapists = async () => {
-  try {
-    const res = await api.get('/staff', {
-      params: {
-        staff_role_id: 2,
-        per_page: 100,
-      },
-    })
+  therapySessionStatuses.value = res.data.data
+}
 
-    therapists.value = res.data.data
-  } catch (err) {
-    console.error(err)
-  }
+const fetchRegistration = async (registrationId) => {
+  const res = await api.get(`/registrations/${registrationId}`)
+
+  registration.value = res.data.data
+
+  await fetchProgramCategorySessionTimes()
 }
 
 // ======================
@@ -548,11 +494,10 @@ const resetFilters = async () => {
 
   try {
     search.value = ''
-
     filters.value = {
       date: '',
-
       therapist_id: null,
+      therapy_session_status_id: null,
     }
 
     page.value = 1
@@ -621,41 +566,61 @@ const allowLateActivity = async (item) => {
   }
 }
 
-const openEditSession = (item) => {
+const openEditSession = async (item) => {
   editingSessionId.value = item.id
 
-  const selectedSlot = timeSlots.find(
-    (slot) => slot.start === item.start_time.slice(0, 5) && slot.end === item.end_time.slice(0, 5),
-  )
-
-  sessionForm.value = {
-    registration_id: item.registration_id,
-    therapist_id: item.therapist_id,
-
-    therapy_date: item.therapy_date,
-
-    session_time: selectedSlot?.label ?? null,
-
-    notes: item.notes ?? '',
-  }
-
   sessionDialog.value = true
+  loadingSessionDialog.value = true
+
+  try {
+    await fetchRegistration(item.registration_id)
+    editingSessionId.value = item.id
+    const selectedSessionTime = programCategorySessionTimes.value.find(
+      (slot) =>
+        slot.start_time.slice(0, 5) === item.start_time.slice(0, 5) &&
+        slot.end_time.slice(0, 5) === item.end_time.slice(0, 5),
+    )
+
+    sessionForm.value = {
+      registration_id: item.registration_id,
+
+      therapist_id: null,
+
+      therapy_date: item.therapy_date,
+
+      session_time_id: selectedSessionTime?.id ?? null,
+
+      notes: item.notes ?? '',
+    }
+
+    sessionDialog.value = true
+  } finally {
+    loadingSessionDialog.value = false
+  }
 }
 
 const saveSession = async () => {
   try {
-    const selectedSlot = timeSlots.find((slot) => slot.label === sessionForm.value.session_time)
+    if (!selectedSessionTime.value) {
+      snackbarText.value = 'Please select session time.'
+
+      snackbarColor.value = 'warning'
+
+      snackbar.value = true
+
+      return
+    }
 
     const payload = {
       registration_id: sessionForm.value.registration_id,
 
-      therapist_id: sessionForm.value.therapist_id,
+      therapist_id: null,
 
       therapy_date: sessionForm.value.therapy_date,
 
-      start_time: selectedSlot.start,
+      start_time: selectedSessionTime.value.start_time,
 
-      end_time: selectedSlot.end,
+      end_time: selectedSessionTime.value.end_time,
 
       notes: sessionForm.value.notes,
     }
@@ -672,7 +637,7 @@ const saveSession = async () => {
       registration_id: null,
       therapist_id: null,
       therapy_date: '',
-      session_time: null,
+      session_time_id: null,
       notes: '',
     }
 
@@ -742,12 +707,8 @@ const deleteSession = async (item) => {
   }
 }
 
-// ======================
-// INIT
-// ======================
-
 onMounted(async () => {
-  await fetchTherapists()
+  await fetchTherapySessionStatuses()
 })
 </script>
 

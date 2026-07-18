@@ -94,6 +94,16 @@ const successMessage = ref('')
 
 const form = ref<InstanceType<typeof VForm>>()
 
+const snackbar = ref(false)
+const snackbarText = ref('')
+const snackbarColor = ref('success')
+
+const showSnackbar = (text: string, color: string = 'success') => {
+  snackbarText.value = text
+  snackbarColor.value = color
+  snackbar.value = true
+}
+
 const emailRules = [
   (v: string) => !!v || 'Email is required',
 

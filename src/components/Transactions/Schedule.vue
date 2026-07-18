@@ -16,7 +16,7 @@
         <div>
           <h1 class="text-h4 font-weight-bold mb-2">Schedule</h1>
 
-          <p class="text-body-2 text-grey">Manage therapy schedules.</p>
+          <p class="text-body-2 text-grey">Manage school learning schedules.</p>
         </div>
 
         <v-btn variant="tonal" prepend-icon="mdi-arrow-left" @click="goBack">Back</v-btn>
@@ -53,13 +53,6 @@
               <div class="text-caption text-grey">Child Birth Date</div>
               <div class="font-weight-medium">
                 {{ formatDate(registration.child?.birth_date) || '-' }}
-              </div>
-            </v-col>
-
-            <v-col cols="12" md="4">
-              <div class="text-caption text-grey">Problem</div>
-              <div class="font-weight-medium">
-                {{ registration.complaint || '-' }}
               </div>
             </v-col>
 
@@ -102,10 +95,9 @@
 
       <v-divider />
       <v-card elevation="1" class="mb-4 rounded-lg">
-        <v-card-title>Therapist Availability</v-card-title>
+        <v-card-title>School Schedule</v-card-title>
 
         <v-divider />
-
         <v-card-text>
           <v-row>
             <v-col cols="12" md="3">
@@ -126,18 +118,6 @@
               />
             </v-col>
 
-            <v-col cols="12" md="4">
-              <v-select
-                v-model="availabilityFilter.therapist_id"
-                :items="therapists"
-                item-title="name"
-                item-value="id"
-                label="Therapist"
-                density="compact"
-                clearable
-              />
-            </v-col>
-
             <v-col cols="12" md="2">
               <v-btn color="primary" block @click="applyAvailabilityFilter">Apply</v-btn>
             </v-col>
@@ -147,77 +127,150 @@
         <v-progress-linear v-if="availabilityLoading" indeterminate color="primary" />
 
         <v-card-text class="pa-0">
-          <div class="availability-grid-wrapper">
-            <table class="availability-grid">
+          <div class="schedule-wrapper">
+            <!-- HEADER -->
+            <table class="schedule-grid schedule-header">
               <thead>
                 <tr>
-                  <th>Therapist</th>
-                  <th v-for="day in weekDates" :key="day.key">
-                    {{ day.label }}
-                  </th>
+                  <th rowspan="2" class="date-column">Date</th>
+
+                  <th colspan="3">Toddler</th>
+
+                  <th colspan="3">Kinder</th>
+                </tr>
+
+                <tr>
+                  <th>08:00 - 09:30</th>
+
+                  <th>10:30 - 12:00</th>
+
+                  <th>15:00 - 16:30</th>
+
+                  <th>08:00 - 10:00</th>
+
+                  <th>10:30 - 12:30</th>
+
+                  <th>15:00 - 17:00</th>
                 </tr>
               </thead>
-
-              <tbody>
-                <template v-for="therapist in therapistsGrid" :key="therapist.name">
-                  <tr v-for="hour in availabilityHours" :key="therapist.name + hour">
-                    <td
-                      v-if="hour === '08'"
-                      :rowspan="availabilityHours.length"
-                      class="therapist-name"
-                    >
-                      {{ therapist.name }}
-                    </td>
-
-                    <td
-                      v-for="day in weekDates"
-                      :key="day.date + hour"
-                      :style="{
-                        background: getCellColor(therapist, day, hour),
-                      }"
-                    >
-                      <template v-if="getSessionInfo(therapist.id, day, hour)">
-                        <v-tooltip location="top">
-                          <template #activator="{ props }">
-                            <span v-bind="props" class="slot-content">
-                              <span class="slot-hour">
-                                {{ hour }}
-                              </span>
-
-                              <span class="slot-child">
-                                {{
-                                  getSessionInfo(
-                                    therapist.id,
-                                    day,
-                                    hour,
-                                  ).registration.child.name.split(' ')[0]
-                                }}
-                              </span>
-                            </span>
-                          </template>
-
-                          {{ getSessionInfo(therapist.id, day, hour).registration.child.name }}
-                        </v-tooltip>
-                      </template>
-
-                      <template v-else>
-                        <span class="slot-hour">
-                          {{ hour }}
-                        </span>
-                      </template>
-                    </td>
-                  </tr>
-                </template>
-              </tbody>
             </table>
+
+            <!-- BODY -->
+            <div class="availability-grid-wrapper">
+              <table class="schedule-grid schedule-body">
+                <tbody>
+                  <template v-for="schedule in schedules" :key="`${schedule.date}-${schedule.day}`">
+                    <!-- WEEKEND -->
+                    <tr v-if="schedule.isWeekend">
+                      <td class="date-column holiday-cell">
+                        <div class="date-text">
+                          {{ schedule.date }}
+                        </div>
+
+                        <div class="day-text">
+                          {{ schedule.day }}
+                        </div>
+                      </td>
+
+                      <td class="holiday-cell">-</td>
+
+                      <td class="holiday-cell">-</td>
+
+                      <td class="holiday-cell">-</td>
+
+                      <td class="holiday-cell">-</td>
+
+                      <td class="holiday-cell">-</td>
+
+                      <td class="holiday-cell">-</td>
+                    </tr>
+
+                    <!-- WEEKDAY -->
+                    <template v-else>
+                      <tr v-for="row in 10" :key="`${schedule.date}-${row}`">
+                        <td v-if="row === 1" rowspan="10" class="date-column">
+                          <div class="date-text">
+                            {{ schedule.date }}
+                          </div>
+
+                          <div class="day-text">
+                            {{ schedule.day }}
+                          </div>
+                        </td>
+
+                        <!-- TODDLER -->
+                        <td
+                          :class="{
+                            'red-cell': hasChild(schedule.toddler1, row - 1),
+                            'available-cell': !hasChild(schedule.toddler1, row - 1),
+                          }"
+                          :title="getChild(schedule.toddler1, row - 1)"
+                        >
+                          {{ getChildLabel(schedule.toddler1, row - 1) }}
+                        </td>
+
+                        <td
+                          :class="{
+                            'red-cell': hasChild(schedule.toddler2, row - 1),
+                            'available-cell': !hasChild(schedule.toddler2, row - 1),
+                          }"
+                          :title="getChild(schedule.toddler2, row - 1)"
+                        >
+                          {{ getChildLabel(schedule.toddler2, row - 1) }}
+                        </td>
+
+                        <td
+                          :class="{
+                            'red-cell': hasChild(schedule.toddler3, row - 1),
+                            'available-cell': !hasChild(schedule.toddler3, row - 1),
+                          }"
+                          :title="getChild(schedule.toddler3, row - 1)"
+                        >
+                          {{ getChildLabel(schedule.toddler3, row - 1) }}
+                        </td>
+
+                        <!-- KINDER -->
+                        <td
+                          :class="{
+                            'red-cell': row > 8 || hasChild(schedule.kinder1, row - 1),
+                            'available-cell': row <= 8 && !hasChild(schedule.kinder1, row - 1),
+                          }"
+                          :title="getChild(schedule.kinder1, row - 1)"
+                        >
+                          {{ row <= 8 ? getChildLabel(schedule.kinder1, row - 1) : '-' }}
+                        </td>
+
+                        <td
+                          :class="{
+                            'red-cell': row > 8 || hasChild(schedule.kinder2, row - 1),
+                            'available-cell': row <= 8 && !hasChild(schedule.kinder2, row - 1),
+                          }"
+                          :title="getChild(schedule.kinder2, row - 1)"
+                        >
+                          {{ row <= 8 ? getChildLabel(schedule.kinder2, row - 1) : '-' }}
+                        </td>
+
+                        <td
+                          :class="{
+                            'red-cell': row > 8 || hasChild(schedule.kinder3, row - 1),
+                            'available-cell': row <= 8 && !hasChild(schedule.kinder3, row - 1),
+                          }"
+                          :title="getChild(schedule.kinder3, row - 1)"
+                        >
+                          {{ row <= 8 ? getChildLabel(schedule.kinder3, row - 1) : '-' }}
+                        </td>
+                      </tr>
+                    </template>
+                  </template>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div class="d-flex ga-4 pa-4 flex-wrap">
             <div>🟥 Occupied</div>
 
             <div>🟩 Available</div>
-
-            <div>🟨 Break</div>
 
             <div>🟦 Weekend</div>
           </div>
@@ -252,7 +305,6 @@
                       <tr>
                         <th style="width: 10%">Day</th>
                         <th style="width: 10%">Enable</th>
-                        <th style="width: 40%">Therapist</th>
                         <th style="width: 30%">Session Time</th>
                       </tr>
                     </thead>
@@ -268,22 +320,9 @@
                         </td>
 
                         <td>
-                          <v-autocomplete
-                            v-model="schedule.therapist_id"
-                            :items="therapists"
-                            item-title="name"
-                            item-value="id"
-                            variant="outlined"
-                            density="comfortable"
-                            hide-details
-                            :disabled="!schedule.enabled"
-                          />
-                        </td>
-
-                        <td>
                           <v-select
-                            v-model="schedule.time_slot"
-                            :items="timeSlots"
+                            v-model="schedule.session_time_id"
+                            :items="availableTimeSlots"
                             item-title="label"
                             item-value="id"
                             variant="outlined"
@@ -369,18 +408,45 @@
       </v-row>
 
       <v-card elevation="1" class="rounded-lg">
-        <v-card-title>Therapy Sessions</v-card-title>
+        <v-card-title>School Sessions</v-card-title>
+        <v-divider></v-divider>
+        <v-card-text>
+          <v-row class="mb-4">
+            <v-col cols="12" md="3">
+              <v-select
+                v-model="sessionFilters.day"
+                :items="dayOptions"
+                item-title="title"
+                item-value="value"
+                label="Day"
+                clearable
+              />
+            </v-col>
+
+            <v-col cols="12" md="3">
+              <v-select
+                v-model="sessionFilters.status"
+                :items="statusOptions"
+                item-title="title"
+                item-value="value"
+                label="Status"
+                clearable
+              />
+            </v-col>
+          </v-row>
+        </v-card-text>
+
         <v-divider></v-divider>
 
         <v-data-table
           :headers="headers"
-          :items="sessions"
+          :items="filteredSessions"
           :items-per-page="20"
           density="comfortable"
         >
-          <!-- THERAPIST -->
-          <template v-slot:item.therapist="{ item }">
-            {{ item.therapist?.name || '-' }}
+          <!-- DAY -->
+          <template #item.day="{ item }">
+            {{ formatDay(item.therapy_date) }}
           </template>
 
           <!-- START -->
@@ -450,47 +516,37 @@
 
   <v-dialog v-model="sessionDialog" max-width="600">
     <v-card>
-      <v-card-title>Add Session</v-card-title>
-      <v-card-text class="pt-4">
-        <v-select
-          class="mb-2"
-          v-model="sessionForm.therapist_id"
-          :items="therapists"
-          item-title="name"
-          item-value="id"
-          label="Therapist"
-          variant="outlined"
-        />
+      <v-card-title>
+        {{ editingSessionId ? 'Edit Session' : 'Add Session' }}
+      </v-card-title>
 
+      <v-card-text class="pt-4">
         <v-text-field
-          class="mb-2"
           v-model="sessionForm.therapy_date"
           type="date"
           label="Date"
           variant="outlined"
+          class="mb-2"
         />
 
         <v-select
-          v-model="sessionForm.session_time"
-          :items="timeSlots.filter((slot) => !slot.disabled)"
+          v-model="sessionForm.session_time_id"
+          :items="programCategorySessionTimes"
           item-title="label"
-          item-value="label"
+          item-value="id"
           label="Session Time"
           variant="outlined"
+          class="mb-2"
         />
 
-        <v-textarea
-          class="mb-2"
-          v-model="sessionForm.notes"
-          label="Notes"
-          rows="2"
-          variant="outlined"
-        />
+        <v-textarea v-model="sessionForm.notes" label="Notes" rows="2" variant="outlined" />
       </v-card-text>
 
       <v-card-actions>
         <v-spacer />
+
         <v-btn variant="text" @click="closeSessionDialog">Cancel</v-btn>
+
         <v-btn color="primary" @click="saveSession">
           {{ editingSessionId ? 'Update Session' : 'Save Session' }}
         </v-btn>
@@ -498,53 +554,48 @@
     </v-card>
   </v-dialog>
 
-  <v-dialog v-model="conflictDialog" max-width="800">
-    <v-card>
-      <v-card-title class="text-h6">Schedule Conflicts</v-card-title>
+  <v-dialog v-model="conflictDialog" max-width="700">
+    <v-card rounded="lg">
+      <v-card-title class="text-h6">Session Slot Unavailable</v-card-title>
+
+      <v-divider />
 
       <v-card-text>
         <v-alert type="warning" variant="tonal" class="mb-4">
-          Ada konflik jadwal sesi terapi. Mohon cek kembali jadwal yang anda buat. Pastikan jadwal
-          yang anda pilih tidak konflik dengan jadwal di bawah ini.
+          The following session slots have reached their maximum capacity. Please choose another day
+          or another session time, then generate again.
         </v-alert>
 
         <v-table density="comfortable">
           <thead>
             <tr>
-              <th>Date</th>
+              <th style="width: 45%">Date</th>
 
-              <th>Time</th>
+              <th style="width: 25%">Time</th>
 
-              <th>Therapist</th>
-
-              <th>Child</th>
+              <th style="width: 30%">Capacity</th>
             </tr>
           </thead>
 
           <tbody>
             <tr v-for="(item, index) in conflictSchedules" :key="index">
               <td>
-                <div>{{ formatDay(item.therapy_date) }}</div>
+                <div>{{ item.day }}</div>
+
                 <div class="text-grey">
                   {{ formatDate(item.therapy_date) }}
                 </div>
               </td>
 
-              <td>
-                {{ item.time_slot }}
-              </td>
+              <td>{{ item.start_time }} - {{ item.end_time }}</td>
 
-              <td>
-                {{ item.therapist_name }}
-              </td>
-
-              <td>
-                {{ item.child_name }}
-              </td>
+              <td>{{ item.occupied }} / {{ item.capacity }}</td>
             </tr>
           </tbody>
         </v-table>
       </v-card-text>
+
+      <v-divider />
 
       <v-card-actions>
         <v-spacer />
@@ -563,7 +614,6 @@ import api from '@/services/api'
 const route = useRoute()
 const router = useRouter()
 const registration = ref({})
-const therapists = ref([])
 const sessions = ref([])
 const snackbar = ref(false)
 const snackbarText = ref('')
@@ -577,46 +627,85 @@ const availabilityLoading = ref(false)
 const sessionDialog = ref(false)
 const editingSessionId = ref(null)
 const conflictDialog = ref(false)
-
+const availabilityGrid = ref([])
 const conflictSchedules = ref([])
+const therapySessionStatuses = ref([])
+const programCategorySessionTimes = ref([])
+
+const sessionFilters = ref({
+  day: null,
+  status: null,
+})
+
+const dayOptions = [
+  { title: 'All Days', value: null },
+  { title: 'Monday', value: 1 },
+  { title: 'Tuesday', value: 2 },
+  { title: 'Wednesday', value: 3 },
+  { title: 'Thursday', value: 4 },
+  { title: 'Friday', value: 5 },
+]
+
+const statusOptions = computed(() => [
+  {
+    title: 'All Status',
+    value: null,
+  },
+
+  ...therapySessionStatuses.value.map((item) => ({
+    title: item.name,
+    value: item.id,
+  })),
+])
 
 const sessionForm = ref({
   therapist_id: null,
   therapy_date: '',
-  session_time: null,
+  session_time_id: null,
   notes: '',
 })
 
-const weekDates = computed(() => {
-  const result = []
+const getChildLabel = (list, row) => {
+  const child = getChild(list, row)
 
-  if (!appliedAvailabilityFilter.value.start_date || !appliedAvailabilityFilter.value.end_date) {
-    return result
-  }
+  return `${row + 1}. ${getFirstName(child)}`
+}
 
-  const current = new Date(appliedAvailabilityFilter.value.start_date)
+const getFirstName = (name) => {
+  if (!name) return ''
 
-  const end = new Date(appliedAvailabilityFilter.value.end_date)
+  return name.split(' ')[0]
+}
 
-  while (current <= end) {
-    result.push({
-      key: current.toISOString(),
+const hasChild = (list, row) => {
+  return !!getChild(list, row)
+}
 
-      date: current.toISOString().split('T')[0],
-
-      label: current.toLocaleDateString('en-US', {
-        weekday: 'short',
-        day: '2-digit',
-      }),
-    })
-
-    current.setDate(current.getDate() + 1)
-  }
-
-  return result
+const selectedSessionTime = computed(() => {
+  return (
+    programCategorySessionTimes.value.find(
+      (item) => item.id === sessionForm.value.session_time_id,
+    ) ?? null
+  )
 })
 
-const availabilityHours = ['08', '09', '10', '11', '12', '13', '14', '15', '16', '17']
+const programCategoryId = computed(() => {
+  return registration.value?.programs?.[0]?.program_category?.id ?? null
+})
+
+const filteredSessions = computed(() => {
+  let data = [...sessions.value]
+
+  if (sessionFilters.value.day !== null) {
+    data = data.filter((item) => new Date(item.therapy_date).getDay() === sessionFilters.value.day)
+  }
+
+  if (sessionFilters.value.status !== null) {
+    data = data.filter((item) => item.therapy_session_status_id === sessionFilters.value.status)
+  }
+
+  return data
+})
 
 const availabilityFilter = ref({
   start_date: '',
@@ -638,132 +727,14 @@ const closeSessionDialog = () => {
   sessionForm.value = {
     therapist_id: null,
     therapy_date: '',
-    session_time: null,
+    session_time_id: null,
     notes: '',
   }
 }
 
-const therapistsGrid = ref([])
-
-const availabilitySessions = ref([])
-
-const daysOfWeek = [
-  {
-    label: 'Monday',
-    value: 1,
-  },
-  {
-    label: 'Tuesday',
-    value: 2,
-  },
-  {
-    label: 'Wednesday',
-    value: 3,
-  },
-  {
-    label: 'Thursday',
-    value: 4,
-  },
-  {
-    label: 'Friday',
-    value: 5,
-  },
-  {
-    label: 'Saturday',
-    value: 6,
-  },
-  {
-    label: 'Sunday',
-    value: 0,
-  },
-]
-
-const timeSlots = [
-  {
-    label: '08:00 - 09:00',
-    start: '08:00',
-    end: '09:00',
-    disabled: false,
-  },
-  {
-    label: '09:00 - 10:00',
-    start: '09:00',
-    end: '10:00',
-    disabled: false,
-  },
-  {
-    label: '10:00 - 11:00',
-    start: '10:00',
-    end: '11:00',
-    disabled: false,
-  },
-  {
-    label: '11:00 - 12:00',
-    start: '11:00',
-    end: '12:00',
-    disabled: false,
-  },
-  {
-    label: '12:00 - 13:00 (Break)',
-    start: '12:00',
-    end: '13:00',
-    disabled: true,
-  },
-  {
-    label: '13:00 - 14:00',
-    start: '13:00',
-    end: '14:00',
-    disabled: false,
-  },
-  {
-    label: '14:00 - 15:00',
-    start: '14:00',
-    end: '15:00',
-    disabled: false,
-  },
-  {
-    label: '15:00 - 16:00',
-    start: '15:00',
-    end: '16:00',
-    disabled: false,
-  },
-  {
-    label: '16:00 - 17:00',
-    start: '16:00',
-    end: '17:00',
-    disabled: false,
-  },
-  {
-    label: '17:00 - 18:00',
-    start: '17:00',
-    end: '18:00',
-    disabled: false,
-  },
-]
-
-const getCellKey = (day, hour) => {
-  return `${day.substring(0, 3)}-${hour}`
-}
-
-const getCellColor = (therapist, day, hour) => {
-  if (hour === '12') {
-    return '#fff3cd'
-  }
-
-  const weekday = new Date(day.date).getDay()
-
-  if (weekday === 0 || weekday === 6) {
-    return '#9fc5e8'
-  }
-
-  const session = getSessionInfo(therapist.id, day, hour)
-
-  if (session) {
-    return '#f4cccc'
-  }
-
-  return '#d9ead3'
-}
+const availableTimeSlots = computed(() => {
+  return programCategorySessionTimes.value
+})
 
 const goBack = () => {
   router.back()
@@ -773,56 +744,34 @@ const requiredRule = [(v) => !!v || 'This field is required']
 
 const form = ref({
   start_date: '',
-
+  notes: '',
   schedule_configs: [
     {
       day: 1,
       enabled: false,
-      therapist_id: null,
-      time_slot: null,
+      session_time_id: null,
     },
     {
       day: 2,
       enabled: false,
-      therapist_id: null,
-      time_slot: null,
+      session_time_id: null,
     },
     {
       day: 3,
       enabled: false,
-      therapist_id: null,
-      time_slot: null,
+      session_time_id: null,
     },
     {
       day: 4,
       enabled: false,
-      therapist_id: null,
-      time_slot: null,
+      session_time_id: null,
     },
     {
       day: 5,
       enabled: false,
-      therapist_id: null,
-      time_slot: null,
-    },
-    {
-      day: 6,
-      enabled: false,
-      therapist_id: null,
-      time_slot: null,
-    },
-    {
-      day: 0,
-      enabled: false,
-      therapist_id: null,
-      time_slot: null,
+      session_time_id: null,
     },
   ],
-
-  therapy_date: '',
-  start_time: '',
-  end_time: '',
-  notes: '',
 })
 
 const weekDays = [
@@ -846,21 +795,13 @@ const weekDays = [
     day: 5,
     label: 'Friday',
   },
-  {
-    day: 6,
-    label: 'Saturday',
-  },
-  {
-    day: 0,
-    label: 'Sunday',
-  },
 ]
 
 const headers = [
+  { title: 'Day', key: 'day' },
   { title: 'Date', key: 'therapy_date' },
   { title: 'Start', key: 'start_time' },
   { title: 'End', key: 'end_time' },
-  { title: 'Therapist', key: 'therapist' },
   { title: 'Session Status', key: 'status' },
   { title: 'Notes', key: 'notes' },
   {
@@ -871,24 +812,13 @@ const headers = [
   },
 ]
 
-const getSessionInfo = (therapistId, day, hour) => {
-  return availabilitySessions.value.find((session) => {
-    const therapistMatch = session.therapist_id === therapistId
-
-    const dateMatch = session.therapy_date === day.date
-
-    const hourMatch = session.start_time.startsWith(hour)
-
-    return therapistMatch && dateMatch && hourMatch
-  })
-}
-
 const targetSessions = computed(() => {
   return (
-    registration.value?.programs?.reduce(
-      (total, program) => total + Number(program.session_count || 0),
-      0,
-    ) || 0
+    registration.value?.programs?.reduce((total, program) => {
+      return (
+        total + Number(program.session_count || 0) * Number(program.learning_period_months || 0)
+      )
+    }, 0) || 0
   )
 })
 
@@ -932,6 +862,23 @@ const remainingCardColor = computed(() => {
   return '#64AF64'
 })
 
+const fetchTherapySessionStatuses = async () => {
+  const res = await api.get('/therapy-session-statuses')
+
+  therapySessionStatuses.value = res.data.data
+}
+
+const fetchProgramCategorySessionTimes = async () => {
+  if (!programCategoryId.value) return
+
+  const res = await api.get(`/program-categories/${programCategoryId.value}/session-times`)
+
+  programCategorySessionTimes.value = res.data.data.map((item) => ({
+    ...item,
+    label: `${item.session_name} (${item.start_time.substring(0, 5)} - ${item.end_time.substring(0, 5)})`,
+  }))
+}
+
 // ======================
 // FETCH REGISTRATION
 // ======================
@@ -941,25 +888,8 @@ const fetchRegistration = async () => {
     const res = await api.get(`/registrations/${route.params.id}`)
 
     registration.value = res.data.data
-  } catch (err) {
-    console.error(err)
-  }
-}
 
-// ======================
-// FETCH THERAPISTS
-// ======================
-
-const fetchTherapists = async () => {
-  try {
-    const res = await api.get('/staff', {
-      params: {
-        staff_role_id: 2,
-        per_page: 100,
-      },
-    })
-
-    therapists.value = res.data.data
+    await fetchProgramCategorySessionTimes()
   } catch (err) {
     console.error(err)
   }
@@ -988,23 +918,71 @@ const fetchAvailability = async () => {
   availabilityLoading.value = true
 
   try {
-    const res = await api.get('/therapy-sessions/availability', {
+    const res = await api.get('/therapy-sessions/grid', {
       params: {
         start_date: availabilityFilter.value.start_date,
         end_date: availabilityFilter.value.end_date,
-        therapist_id: availabilityFilter.value.therapist_id,
       },
     })
 
-    therapistsGrid.value = res.data.therapists
-
-    availabilitySessions.value = res.data.sessions
+    availabilityGrid.value = res.data
   } catch (err) {
     console.error(err)
   } finally {
     availabilityLoading.value = false
   }
 }
+
+const getChildren = (date, category, startTime) => {
+  return availabilityGrid.value
+    .filter(
+      (item) =>
+        item.therapy_date === date &&
+        item.program_category === category &&
+        item.start_time === startTime,
+    )
+    .map((item) => item.child_name)
+}
+
+const getChild = (list, row) => {
+  return list[row] ?? null
+}
+
+const schedules = computed(() => {
+  const dates = [...new Set(availabilityGrid.value.map((item) => item.therapy_date))].sort()
+
+  return dates.map((date) => {
+    const jsDate = new Date(date)
+
+    const day = jsDate.toLocaleDateString('en-US', {
+      weekday: 'long',
+    })
+
+    const formattedDate = jsDate.toLocaleDateString('en-US', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    })
+
+    const isWeekend = availabilityGrid.value.some(
+      (item) => item.therapy_date === date && item.program_category === 'HOLIDAY',
+    )
+
+    return {
+      day,
+      date: formattedDate,
+      isWeekend,
+
+      toddler1: getChildren(date, 'TODDLER', '08:00'),
+      toddler2: getChildren(date, 'TODDLER', '10:30'),
+      toddler3: getChildren(date, 'TODDLER', '15:00'),
+
+      kinder1: getChildren(date, 'KINDER', '08:00'),
+      kinder2: getChildren(date, 'KINDER', '10:30'),
+      kinder3: getChildren(date, 'KINDER', '15:00'),
+    }
+  })
+})
 
 // FORMAT DATE
 const formatDate = (date) => {
@@ -1038,49 +1016,8 @@ const applyAvailabilityFilter = async () => {
   await fetchAvailability()
 }
 
-const previousAvailabilityDay = () => {
-  const d = new Date(availabilityDate.value)
-
-  d.setDate(d.getDate() - 1)
-
-  availabilityDate.value = d
-}
-
-const nextAvailabilityDay = () => {
-  const d = new Date(availabilityDate.value)
-
-  d.setDate(d.getDate() + 1)
-
-  availabilityDate.value = d
-}
-
-const formatAvailabilityDate = () => {
-  return availabilityDate.value.toLocaleDateString('en-ID', {
-    weekday: 'long',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
-}
-
-const getAvailabilityColor = (status) => {
-  if (status === 'available') return 'success'
-
-  if (status === 'occupied') return 'error'
-
-  return 'grey'
-}
-
-const getAvailabilityLabel = (status) => {
-  if (status === 'available') return 'A'
-
-  if (status === 'occupied') return 'O'
-
-  return 'B'
-}
-
 const formatDay = (date) => {
-  return new Date(date).toLocaleDateString('id-ID', {
+  return new Date(date).toLocaleDateString('en-EN', {
     weekday: 'long',
   })
 }
@@ -1123,23 +1060,12 @@ const saveSchedule = async () => {
   }
 
   for (const schedule of enabledSchedules) {
-    if (!schedule.therapist_id) {
-      snackbarText.value = `Please select therapist for ${weekDays.find((d) => d.day === schedule.day)?.label}.`
-
+    if (!schedule.session_time_id) {
+      snackbarText.value = `Please select session time for ${
+        weekDays.find((d) => d.day === schedule.day)?.label
+      }.`
       snackbarColor.value = 'warning'
-
       snackbar.value = true
-
-      return
-    }
-
-    if (!schedule.time_slot) {
-      snackbarText.value = `Please select session time for ${weekDays.find((d) => d.day === schedule.day)?.label}.`
-
-      snackbarColor.value = 'warning'
-
-      snackbar.value = true
-
       return
     }
   }
@@ -1151,13 +1077,10 @@ const saveSchedule = async () => {
       start_date: form.value.start_date,
       notes: form.value.notes,
 
-      schedule_configs: form.value.schedule_configs
-        .filter((schedule) => schedule.enabled)
-        .map((schedule) => ({
-          day: schedule.day,
-          therapist_id: schedule.therapist_id,
-          time_slot: schedule.time_slot,
-        })),
+      schedule_configs: enabledSchedules.map((schedule) => ({
+        day: schedule.day,
+        session_time_id: schedule.session_time_id,
+      })),
     })
 
     snackbarText.value = 'Sessions generated successfully'
@@ -1165,22 +1088,13 @@ const saveSchedule = async () => {
     snackbarColor.value = 'success'
     snackbar.value = true
 
-    form.value = {
-      therapist_id: null,
-
-      days: [],
-
-      start_date: '',
-
-      time_slot: null,
-
-      therapy_date: '',
-
-      start_time: '',
-      end_time: '',
-
-      notes: '',
-    }
+    // reset form
+    form.value.start_date = ''
+    form.value.notes = ''
+    form.value.schedule_configs.forEach((schedule) => {
+      schedule.enabled = false
+      schedule.session_time_id = null
+    })
 
     await fetchSessions()
   } catch (err) {
@@ -1212,18 +1126,26 @@ const saveSchedule = async () => {
 
 const saveSession = async () => {
   try {
-    const selectedSlot = timeSlots.find((slot) => slot.label === sessionForm.value.session_time)
+    if (!selectedSessionTime.value) {
+      snackbarText.value = 'Please select session time.'
+
+      snackbarColor.value = 'warning'
+
+      snackbar.value = true
+
+      return
+    }
 
     const payload = {
       registration_id: route.params.id,
 
-      therapist_id: sessionForm.value.therapist_id,
+      therapist_id: null,
 
       therapy_date: sessionForm.value.therapy_date,
 
-      start_time: selectedSlot.start,
+      start_time: selectedSessionTime.value.start_time,
 
-      end_time: selectedSlot.end,
+      end_time: selectedSessionTime.value.end_time,
 
       notes: sessionForm.value.notes,
     }
@@ -1245,7 +1167,7 @@ const saveSession = async () => {
     sessionForm.value = {
       therapist_id: null,
       therapy_date: '',
-      session_time: null,
+      session_time_id: null,
       notes: '',
     }
 
@@ -1265,16 +1187,18 @@ const saveSession = async () => {
 const openEditSession = (item) => {
   editingSessionId.value = item.id
 
-  const selectedSlot = timeSlots.find(
-    (slot) => slot.start === item.start_time.slice(0, 5) && slot.end === item.end_time.slice(0, 5),
+  const selectedSessionTime = programCategorySessionTimes.value.find(
+    (slot) =>
+      slot.start_time.startsWith(item.start_time.substring(0, 5)) &&
+      slot.end_time.startsWith(item.end_time.substring(0, 5)),
   )
 
   sessionForm.value = {
-    therapist_id: item.therapist_id,
+    therapist_id: null,
 
     therapy_date: item.therapy_date,
 
-    session_time: selectedSlot?.label ?? null,
+    session_time_id: selectedSessionTime?.id ?? null,
 
     notes: item.notes ?? '',
   }
@@ -1357,7 +1281,11 @@ watch(
 onMounted(async () => {
   loading.value = true
 
-  await Promise.all([fetchRegistration(), fetchTherapists(), fetchSessions()])
+  await fetchRegistration()
+
+  await fetchProgramCategorySessionTimes()
+
+  await Promise.all([fetchSessions(), fetchTherapySessionStatuses()])
   const today = new Date()
 
   const endDate = new Date()
@@ -1377,90 +1305,78 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.schedule-content {
-  width: 100%;
-}
-
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.availability-grid {
+.schedule-wrapper {
+  width: 100%;
+}
+
+.schedule-grid {
+  width: 100%;
   border-collapse: collapse;
-  table-layout: auto;
+  table-layout: fixed;
 }
 
-.availability-grid thead th {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: #f5f5f5;
-  border: 1px solid #ddd;
-  padding: 4px;
-  font-size: 12px;
+.schedule-grid th,
+.schedule-grid td {
+  border: 1px solid #d6d6d6;
+  padding: 4px 8px;
+  font-size: 14px;
 }
 
-.availability-grid td {
-  border: 1px solid #ddd;
-  padding: 4px;
-  font-size: 12px;
+.schedule-header {
+  margin-bottom: -1px;
 }
 
-.therapist-name {
+.schedule-header th {
+  background: #ffe8cc;
+  text-align: center;
+  font-weight: 600;
+}
+
+.schedule-body td {
   vertical-align: top;
-  text-align: left;
+}
 
-  white-space: nowrap;
+.date-column {
+  width: 170px;
+}
 
-  width: 1%;
-
-  padding-top: 8px;
-
+.date-text {
   font-weight: 600;
 }
 
-.slot-content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  justify-content: flex-start;
+.day-text {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #757575;
 }
 
-.slot-hour {
-  width: 24px;
-  flex-shrink: 0;
-  font-weight: 600;
-}
-
-.slot-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.schedule-grid th:not(.date-column),
+.schedule-grid td:not(.date-column) {
+  width: calc((100% - 170px) / 6);
 }
 
 .availability-grid-wrapper {
-  overflow: auto;
   max-height: 600px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.overflow-x-auto {
-  overflow-x: auto;
+.red-cell {
+  background: #ffebee;
 }
 
-.schedule-table {
-  min-width: 900px;
+.available-cell {
+  background: #e8f5e9;
 }
 
-.schedule-table td,
-.schedule-table th {
-  vertical-align: middle;
-}
-
-.schedule-table td {
-  padding-top: 8px !important;
-  padding-bottom: 8px !important;
+.holiday-cell {
+  background: #e3f2fd;
+  color: #1565c0;
 }
 </style>

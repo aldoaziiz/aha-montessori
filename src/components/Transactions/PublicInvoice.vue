@@ -69,18 +69,26 @@
           <v-divider class="mb-6" />
 
           <!-- ITEMS -->
-          <div class="text-subtitle-1 font-weight-bold mb-4">Billing Items</div>
+          <div class="d-flex font-weight-bold pb-2">
+            <div class="flex-grow-1">Item</div>
 
-          <div
-            v-for="item in invoice.items"
-            :key="item.id"
-            class="d-flex justify-space-between py-2"
-          >
-            <div>
+            <div class="text-center" style="width: 80px">Qty</div>
+
+            <div class="text-right" style="width: 140px">Total</div>
+          </div>
+
+          <v-divider class="mb-2" />
+
+          <div v-for="item in invoice.items" :key="item.id" class="d-flex align-center py-2">
+            <div class="flex-grow-1">
               {{ item.description }}
             </div>
 
-            <div class="font-weight-medium">
+            <div class="text-center" style="width: 80px">
+              {{ item.quantity }}
+            </div>
+
+            <div class="text-right font-weight-medium" style="width: 140px">
               {{ formatCurrency(item.subtotal) }}
             </div>
           </div>

@@ -298,22 +298,13 @@
 
           <v-card-text>
             <v-row>
-              <v-col cols="12">
-                <v-textarea
-                  v-model="form.registration.complaint"
-                  label="Problem"
-                  rows="2"
-                  :rules="[rules.required]"
-                />
-              </v-col>
-
               <v-col cols="12" md="6">
                 <v-autocomplete
                   v-model="form.registration.clinic_id"
                   :items="clinics"
                   item-title="name"
                   item-value="id"
-                  label="Clinic"
+                  label="AHA! School"
                   :rules="[rules.required]"
                   clearable
                 />
@@ -369,6 +360,18 @@
                   </template>
                 </v-autocomplete>
               </v-col>
+
+              <v-select
+                v-model="form.registration.program_duration_months"
+                label="Learning Period"
+                :items="[
+                  { title: '6 Months', value: 6 },
+                  { title: '12 Months', value: 12 },
+                ]"
+                item-title="title"
+                item-value="value"
+                variant="outlined"
+              />
             </v-row>
           </v-card-text>
         </v-card>
@@ -478,6 +481,7 @@ const form = ref({
     program_category_id: null,
     program_ids: [],
     payer_id: null,
+    program_duration_months: 6,
   },
 })
 

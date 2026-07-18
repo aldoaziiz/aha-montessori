@@ -121,7 +121,7 @@ const routes: RouteRecordRaw[] = [
     meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin'] },
   },
   {
-    path: '/therapy-sessions',
+    path: '/school-sessions',
     component: TherapySessions,
     meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin', 'therapist'] },
   },

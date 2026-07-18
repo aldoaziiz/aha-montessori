@@ -171,7 +171,7 @@
           </v-col>
 
           <v-col cols="12" md="6">
-            <div class="detail-label">Clinic</div>
+            <div class="detail-label">AHA! School</div>
             <div class="detail-value">
               {{ selectedRegistration.clinic?.name || '-' }}
             </div>
@@ -181,13 +181,6 @@
             <div class="detail-label">Payer</div>
             <div class="detail-value">
               {{ selectedRegistration.payer?.name || '-' }}
-            </div>
-          </v-col>
-
-          <v-col cols="12" md="6">
-            <div class="detail-label">Problem</div>
-            <div class="detail-value">
-              {{ selectedRegistration.complaint || '-' }}
             </div>
           </v-col>
 
@@ -250,25 +243,21 @@
 
         <v-list density="compact">
           <v-list-item v-for="program in selectedRegistration.programs" :key="program.id">
-            <template #append>
-              {{ formatCurrency(program.price) }}
+            <template #prepend>
+              <span class="text-grey-darken-1 mr-2">•</span>
             </template>
 
             <v-list-item-title>
               {{ program.name }}
             </v-list-item-title>
+
+            <v-list-item-subtitle v-if="program.session_count > 0">
+              Learning Period : {{ program.learning_period_months }} Months
+            </v-list-item-subtitle>
           </v-list-item>
         </v-list>
 
         <v-divider class="my-4" />
-
-        <div class="d-flex justify-space-between font-weight-bold text-h6">
-          <span>Total</span>
-
-          <span>
-            {{ formatCurrency(calculateTotal(selectedRegistration.programs)) }}
-          </span>
-        </div>
       </v-card-text>
     </v-card>
   </v-dialog>
@@ -360,18 +349,26 @@
 
         <v-divider class="mb-4" />
 
-        <div class="text-subtitle-1 font-weight-bold mb-3">Billing Items</div>
+        <div class="d-flex font-weight-bold pb-2">
+          <div class="flex-grow-1">Item</div>
 
-        <div
-          v-for="item in selectedBilling.items"
-          :key="item.id"
-          class="d-flex justify-space-between py-2"
-        >
-          <div>
+          <div class="text-center" style="width: 80px">Qty</div>
+
+          <div class="text-right" style="width: 140px">Total</div>
+        </div>
+
+        <v-divider class="mb-2" />
+
+        <div v-for="item in selectedBilling.items" :key="item.id" class="d-flex align-center py-2">
+          <div class="flex-grow-1">
             {{ item.description }}
           </div>
 
-          <div class="font-weight-medium">
+          <div class="text-center" style="width: 80px">
+            {{ item.quantity }}
+          </div>
+
+          <div class="text-right font-weight-medium" style="width: 140px">
             {{ formatCurrency(item.subtotal) }}
           </div>
         </div>

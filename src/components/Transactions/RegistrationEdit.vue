@@ -80,7 +80,7 @@
                 :items="clinics"
                 item-title="name"
                 item-value="id"
-                label="Clinic"
+                label="AHA! School"
                 variant="outlined"
                 :disabled="isLocked"
                 @update:model-value="onClinicChange"
@@ -137,14 +137,17 @@
               />
             </v-col>
 
-            <!-- COMPLAINT -->
-            <v-col cols="12">
-              <v-textarea
-                v-model="form.complaint"
-                label="Complaint / Notes"
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="form.program_duration_months"
+                label="Learning Period"
+                :items="[
+                  { title: '6 Months', value: 6 },
+                  { title: '12 Months', value: 12 },
+                ]"
+                item-title="title"
+                item-value="value"
                 variant="outlined"
-                rows="3"
-                :disabled="isLocked"
               />
             </v-col>
           </v-row>
@@ -213,7 +216,7 @@ const form = ref({
   program_category_id: null,
   program_ids: [],
   payer_id: null,
-  complaint: '',
+  program_duration_months: 6,
 })
 
 const filteredPrograms = computed(() => {
@@ -266,15 +269,15 @@ const fetchMasterData = async () => {
 
       billing: registration.billing || null,
 
-      clinic_id: registration.clinic?.id ?? null,
+      clinic_id: registration.clinic_id,
 
       program_category_id: registration.program_category?.id ?? null,
 
-      program_ids: registration.programs?.map((p) => p.id) ?? [],
+      payer_id: registration.payer_id,
 
-      payer_id: registration.payer?.id || null,
+      program_ids: registration.program_ids ?? [],
 
-      complaint: registration.complaint || '',
+      program_duration_months: registration.program_duration_months ?? 6,
     }
   } catch (err) {
     console.error('Error loading registration:', err)
@@ -304,6 +307,7 @@ const updateRegistration = async () => {
       program_ids: form.value.program_ids,
       payer_id: form.value.payer_id,
       complaint: form.value.complaint,
+      program_duration_months: form.value.program_duration_months,
     })
 
     showSnackbar('Registration updated successfully')

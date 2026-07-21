@@ -9,6 +9,7 @@ import Children from '@/components/MasterData/Children.vue'
 import Guardians from '@/components/MasterData/Guardians.vue'
 import Staff from '@/components/MasterData/Staff.vue'
 import Programs from '@/components/MasterData/Programs.vue'
+import ProgramCategories from '@/components/MasterData/ProgramCategories.vue'
 
 // transactions
 import Registrations from '@/components/Transactions/Registrations.vue'
@@ -106,6 +107,16 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/programs/create',
     component: () => import('@/components/MasterData/ProgramCreate.vue'),
+    meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin'] },
+  },
+  {
+    path: '/program-categories',
+    component: ProgramCategories,
+    meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin'] },
+  },
+  {
+    path: '/program-categories/create',
+    component: () => import('@/components/MasterData/ProgramCategoryCreate.vue'),
     meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin'] },
   },
 

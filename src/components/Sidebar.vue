@@ -50,6 +50,12 @@
           title="Programs"
           to="/programs"
         ></v-list-item>
+        <v-list-item
+          @click="setActiveMenu('ProgramCategories')"
+          :active="activeMenu === 'ProgramCategories'"
+          title="Program Categories"
+          to="/program-categories"
+        ></v-list-item>
       </v-list-group>
 
       <!-- transactions -->

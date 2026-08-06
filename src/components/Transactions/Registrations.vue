@@ -373,6 +373,16 @@
           </div>
         </div>
 
+        <v-divider class="my-4" />
+
+        <div class="d-flex justify-space-between font-weight-bold text-h6">
+          <span>TOTAL</span>
+
+          <span>
+            {{ formatCurrency(selectedBilling.total_amount) }}
+          </span>
+        </div>
+
         <!-- RECEIPT -->
         <div v-if="selectedBilling.payment_receipt">
           <v-divider class="my-4" />
@@ -384,16 +394,6 @@
           <v-btn variant="text" prepend-icon="mdi-open-in-new" @click="openReceipt">
             Open Full Image
           </v-btn>
-        </div>
-
-        <v-divider class="my-4" />
-
-        <div class="d-flex justify-space-between font-weight-bold text-h6">
-          <span>TOTAL</span>
-
-          <span>
-            {{ formatCurrency(selectedBilling.total_amount) }}
-          </span>
         </div>
       </v-card-text>
       <v-divider />

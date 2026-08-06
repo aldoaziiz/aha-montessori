@@ -400,17 +400,15 @@
       </v-row>
 
       <!-- SESSION HISTORY -->
-
-      <v-row class="mb-4">
-        <v-btn @click="sessionDialog = true" color="primary" prepend-icon="mdi-plus">
-          Add Session
-        </v-btn>
-      </v-row>
-
       <v-card elevation="1" class="rounded-lg">
         <v-card-title>School Sessions</v-card-title>
         <v-divider></v-divider>
         <v-card-text>
+          <v-row class="mb-4">
+            <v-btn @click="sessionDialog = true" color="primary" prepend-icon="mdi-plus">
+              Add Session
+            </v-btn>
+          </v-row>
           <v-row class="mb-4">
             <v-col cols="12" md="3">
               <v-select
@@ -470,6 +468,43 @@
             </v-chip>
           </template>
 
+          <template #item.attendance="{ item }">
+            <div
+              class="d-flex align-center ga-1"
+              :class="{ 'opacity-60': isUpdatingAttendance(item.id) }"
+            >
+              <!-- Scheduled -->
+              <v-btn
+                size="small"
+                icon="mdi-clock-outline"
+                :disabled="isUpdatingAttendance(item.id)"
+                :color="item.therapy_session_status_id === 1 ? 'primary' : 'grey'"
+                :variant="item.therapy_session_status_id === 1 ? 'flat' : 'text'"
+                @click="updateAttendance(item, 1)"
+              />
+
+              <!-- Completed -->
+              <v-btn
+                size="small"
+                icon="mdi-check"
+                :disabled="isUpdatingAttendance(item.id)"
+                :color="item.therapy_session_status_id === 2 ? 'success' : 'grey'"
+                :variant="item.therapy_session_status_id === 2 ? 'flat' : 'text'"
+                @click="updateAttendance(item, 2)"
+              />
+
+              <!-- Alpha -->
+              <v-btn
+                size="small"
+                icon="mdi-close"
+                :disabled="isUpdatingAttendance(item.id)"
+                :color="item.therapy_session_status_id === 3 ? 'error' : 'grey'"
+                :variant="item.therapy_session_status_id === 3 ? 'flat' : 'text'"
+                @click="updateAttendance(item, 3)"
+              />
+            </div>
+          </template>
+
           <!-- ACTION -->
           <template v-slot:item.actions="{ item }">
             <v-menu>
@@ -482,13 +517,19 @@
               </template>
 
               <v-list>
-                <v-list-item :disabled="!!item.activity" @click="openEditSession(item)">
+                <v-list-item @click="openEditSession(item)">
                   <v-list-item-title>Edit</v-list-item-title>
+                </v-list-item>
+                <!-- <v-list-item
+                  v-if="item.therapy_session_status?.id === 1"
+                  @click="markCompleted(item)"
+                >
+                  <v-list-item-title>Mark as Completed</v-list-item-title>
                 </v-list-item>
                 <v-list-item v-if="item.therapy_session_status?.id === 1" @click="markAlpha(item)">
                   <v-list-item-title>Mark as Alpha</v-list-item-title>
-                </v-list-item>
-                <v-list-item :disabled="!!item.activity" @click="deleteSession(item)">
+                </v-list-item> -->
+                <v-list-item @click="deleteSession(item)">
                   <v-list-item-title>Delete</v-list-item-title>
                 </v-list-item>
               </v-list>
@@ -631,6 +672,7 @@ const availabilityGrid = ref([])
 const conflictSchedules = ref([])
 const therapySessionStatuses = ref([])
 const programCategorySessionTimes = ref([])
+const updatingAttendance = ref([])
 
 const sessionFilters = ref({
   day: null,
@@ -664,6 +706,10 @@ const sessionForm = ref({
   session_time_id: null,
   notes: '',
 })
+
+function isUpdatingAttendance(sessionId) {
+  return updatingAttendance.value.includes(sessionId)
+}
 
 const getChildLabel = (list, row) => {
   const child = getChild(list, row)
@@ -803,6 +849,12 @@ const headers = [
   { title: 'Start', key: 'start_time' },
   { title: 'End', key: 'end_time' },
   { title: 'Session Status', key: 'status' },
+  {
+    title: 'Attendance',
+    key: 'attendance',
+    sortable: false,
+    align: 'center',
+  },
   { title: 'Notes', key: 'notes' },
   {
     title: '',
@@ -1224,6 +1276,34 @@ const markAlpha = async (session) => {
 
     snackbarColor.value = 'error'
     snackbar.value = true
+  }
+}
+
+async function updateAttendance(item, statusId) {
+  if (item.therapy_session_status_id === statusId) {
+    return
+  }
+
+  updatingAttendance.value.push(item.id)
+
+  try {
+    const response = await api.patch(`/therapy-sessions/${item.id}/status`, {
+      therapy_session_status_id: statusId,
+    })
+
+    item.therapy_session_status_id = statusId
+    item.therapy_session_status = response.data.data.therapy_session_status
+
+    snackbarText.value = response.data.message
+    snackbarColor.value = 'success'
+    snackbar.value = true
+  } catch (error) {
+    snackbarText.value = error.response?.data?.message ?? 'Failed to update attendance.'
+
+    snackbarColor.value = 'error'
+    snackbar.value = true
+  } finally {
+    updatingAttendance.value = updatingAttendance.value.filter((id) => id !== item.id)
   }
 }
 

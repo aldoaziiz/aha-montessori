@@ -117,6 +117,46 @@
           </v-chip>
         </template>
 
+        <template #item.attendance="{ item }">
+          <div
+            class="d-flex align-center ga-1"
+            :class="{ 'opacity-60': isUpdatingAttendance(item.id) }"
+          >
+            <!-- Scheduled -->
+
+            <v-btn
+              size="small"
+              icon="mdi-clock-outline"
+              :disabled="isUpdatingAttendance(item.id)"
+              :color="item.therapy_session_status_id === 1 ? 'primary' : 'grey'"
+              :variant="item.therapy_session_status_id === 1 ? 'flat' : 'text'"
+              @click="updateAttendance(item, 1)"
+            />
+
+            <!-- Completed -->
+
+            <v-btn
+              size="small"
+              icon="mdi-check"
+              :disabled="isUpdatingAttendance(item.id)"
+              :color="item.therapy_session_status_id === 2 ? 'success' : 'grey'"
+              :variant="item.therapy_session_status_id === 2 ? 'flat' : 'text'"
+              @click="updateAttendance(item, 2)"
+            />
+
+            <!-- Alpha -->
+
+            <v-btn
+              size="small"
+              icon="mdi-close"
+              :disabled="isUpdatingAttendance(item.id)"
+              :color="item.therapy_session_status_id === 3 ? 'error' : 'grey'"
+              :variant="item.therapy_session_status_id === 3 ? 'flat' : 'text'"
+              @click="updateAttendance(item, 3)"
+            />
+          </div>
+        </template>
+
         <!-- ACTION -->
         <template v-slot:item.actions="{ item }">
           <v-menu>
@@ -132,7 +172,7 @@
                 <v-list-item-title>View Schedule</v-list-item-title>
               </v-list-item>
 
-              <v-list-item :disabled="!!item.activity" @click="openEditSession(item)">
+              <v-list-item @click="openEditSession(item)">
                 <v-list-item-title>Edit</v-list-item-title>
               </v-list-item>
 
@@ -269,6 +309,7 @@ const therapySessionStatuses = ref([])
 const registration = ref(null)
 const programCategorySessionTimes = ref([])
 const loadingSessionDialog = ref(false)
+const updatingAttendance = ref([])
 
 const sessionForm = ref({
   registration_id: null,
@@ -296,6 +337,12 @@ const headers = [
   { title: 'Date', key: 'therapy_date' },
   { title: 'Time', key: 'time' },
   { title: 'Session Status', key: 'status' },
+  {
+    title: 'Attendance',
+    key: 'attendance',
+    sortable: false,
+    align: 'center',
+  },
   { title: 'Notes', key: 'notes' },
   {
     title: '',
@@ -304,6 +351,10 @@ const headers = [
     align: 'center',
   },
 ]
+
+function isUpdatingAttendance(sessionId) {
+  return updatingAttendance.value.includes(sessionId)
+}
 
 const closeSessionDialog = () => {
   sessionDialog.value = false
@@ -672,6 +723,34 @@ const markAlpha = async (session) => {
 
     snackbarColor.value = 'error'
     snackbar.value = true
+  }
+}
+
+async function updateAttendance(item, statusId) {
+  if (item.therapy_session_status_id === statusId) {
+    return
+  }
+
+  updatingAttendance.value.push(item.id)
+
+  try {
+    const response = await api.patch(`/therapy-sessions/${item.id}/status`, {
+      therapy_session_status_id: statusId,
+    })
+
+    item.therapy_session_status_id = statusId
+    item.therapy_session_status = response.data.data.therapy_session_status
+
+    snackbarText.value = response.data.message
+    snackbarColor.value = 'success'
+    snackbar.value = true
+  } catch (error) {
+    snackbarText.value = error.response?.data?.message ?? 'Failed to update attendance.'
+
+    snackbarColor.value = 'error'
+    snackbar.value = true
+  } finally {
+    updatingAttendance.value = updatingAttendance.value.filter((id) => id !== item.id)
   }
 }
 

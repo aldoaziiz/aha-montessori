@@ -1,235 +1,232 @@
 <template>
-  <div class="activity-page">
-    <!-- PAGE HEADER -->
-    <div class="page-header mb-6">
-      <div>
-        <h1 class="text-h4 font-weight-bold mb-2">Activity Feed</h1>
+  <v-container fluid class="py-6">
+    <!-- HEADER -->
+    <v-row>
+      <div class="mb-5">
+        <h1 class="text-h4 font-weight-bold">Activity Feed</h1>
 
-        <p class="text-body-2 text-grey">
-          Daily activities, therapy moments, and learning updates.
-        </p>
+        <div class="text-body-2 text-grey mt-2">
+          Daily activities, learning moments, and updates.
+        </div>
       </div>
+    </v-row>
 
-      <v-btn
-        v-if="canManageActivity"
-        color="primary"
-        prepend-icon="mdi-plus"
-        size="large"
-        @click="goToCreate"
-      >
-        New Post
-      </v-btn>
-    </div>
+    <v-row justify="end">
+      <v-btn color="primary" prepend-icon="mdi-plus" to="/activity/create">New Post</v-btn>
+    </v-row>
 
     <!-- SEARCH -->
-    <v-card elevation="1" class="mb-4 rounded-xl">
-      <v-card-text>
-        <v-text-field
-          v-model="search"
-          label="Search Child"
-          prepend-inner-icon="mdi-magnify"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-          clearable
-        />
-      </v-card-text>
-    </v-card>
+    <v-row>
+      <v-text-field
+        v-model="search"
+        placeholder="Search Child"
+        prepend-inner-icon="mdi-magnify"
+        variant="outlined"
+        rounded="lg"
+        clearable
+        class="mb-4"
+        @keyup.enter="searchActivity"
+        @click:clear="clearSearch"
+      />
+    </v-row>
 
-    <!-- PAGE LOADING -->
-    <div v-if="pageLoading">
-      <v-card v-for="n in 3" :key="n" class="mb-4 rounded-xl">
-        <v-skeleton-loader
-          type="
-            article,
-            image,
-            paragraph
-          "
-        />
-      </v-card>
-    </div>
+    <!-- LOADING -->
+
+    <v-row v-if="initialLoading">
+      <v-col v-for="i in 3" :key="i" cols="12" sm="10" md="8" lg="7" xl="6" class="mx-auto">
+        <v-skeleton-loader type="card" />
+      </v-col>
+    </v-row>
 
     <!-- FEED -->
-    <div v-else class="feed-wrapper">
-      <!-- POST CARD -->
-      <v-card
-        v-for="activity in activities"
-        :key="activity.id"
-        class="mb-4 rounded-xl"
-        elevation="1"
-      >
-        <v-card-text>
-          <!-- HEADER -->
-          <div class="d-flex justify-space-between align-start mb-4">
-            <!-- LEFT -->
-            <div>
-              <!-- SESSION DATE -->
-              <div class="text-caption text-grey mb-1">
-                {{ formatDate(activity.therapy_session?.therapy_date) }}
+
+    <div v-else>
+      <!-- ACTIVITY LIST -->
+
+      <div v-for="activity in activities" :key="activity.id" class="activity-wrapper">
+        <v-card rounded="xl" elevation="1" class="activity-card">
+          <!-- TOP -->
+
+          <v-card-text>
+            <div class="d-flex justify-space-between">
+              <div>
+                <div class="text-caption text-grey">
+                  {{ formatDate(activity.created_at) }}
+                </div>
+
+                <!-- CATEGORY -->
+
+                <div class="text-h6 font-weight-bold mt-2">
+                  {{ activity.program_category?.name }}
+                </div>
+
+                <div class="text-caption text-medium-emphasis mt-1">
+                  {{ getSessionText(activity) }}
+                </div>
+
+                <!-- CHILDREN -->
+
+                <div v-if="activity.children?.length" class="mb-4 mt-3">
+                  <div class="d-flex flex-wrap align-center ga-2">
+                    <v-chip
+                      v-for="child in visibleChildren(activity)"
+                      :key="child.id"
+                      size="small"
+                      variant="tonal"
+                      prepend-icon="mdi-account"
+                    >
+                      {{ child.name }}
+                    </v-chip>
+
+                    <v-btn
+                      v-if="activity.children.length > CHILDREN_PREVIEW_LIMIT"
+                      variant="text"
+                      size="small"
+                      class="children-toggle"
+                      @click="toggleChildren(activity.id)"
+                    >
+                      {{
+                        areChildrenExpanded(activity.id)
+                          ? 'Show less'
+                          : `+${remainingChildrenCount(activity)} more`
+                      }}
+                    </v-btn>
+                  </div>
+                </div>
               </div>
 
-              <!-- CHILD -->
-              <div class="text-h6 font-weight-bold">
-                {{ activity.therapy_session?.registration?.child?.name }}
-              </div>
+              <!-- ACTION -->
 
-              <!-- PROGRAM -->
-              <div class="text-body-2 text-grey">
-                {{ activity.therapy_session?.registration?.program?.name }}
+              <div v-if="canManageActivity">
+                <v-menu>
+                  <template #activator="{ props }">
+                    <v-btn icon variant="text" size="small" v-bind="props">
+                      <v-icon>mdi-dots-vertical</v-icon>
+                    </v-btn>
+                  </template>
+
+                  <v-list density="comfortable">
+                    <v-list-item @click="goToEdit(activity.id)">
+                      <v-list-item-title>Edit</v-list-item-title>
+                    </v-list-item>
+
+                    <v-list-item @click="confirmDelete(activity)">
+                      <v-list-item-title class="text-error">Delete</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
               </div>
             </div>
+          </v-card-text>
 
-            <!-- RIGHT -->
-            <div v-if="canManageActivity" class="d-flex align-center ga-2">
-              <!-- ACTION MENU -->
-              <v-menu>
-                <template #activator="{ props }">
-                  <v-btn icon variant="text" size="small" v-bind="props">
-                    <v-icon>mdi-dots-vertical</v-icon>
-                  </v-btn>
-                </template>
+          <!-- PHOTO -->
 
-                <v-list density="comfortable">
-                  <!-- EDIT -->
-                  <v-list-item @click="goToEdit(activity.id)">
-                    <v-list-item-title>Edit</v-list-item-title>
-                  </v-list-item>
-
-                  <!-- DELETE -->
-                  <v-list-item @click="deleteActivity(activity.id)">
-                    <v-list-item-title class="text-error">Delete</v-list-item-title>
-                  </v-list-item>
-                </v-list>
-              </v-menu>
-            </div>
-          </div>
-
-          <!-- PHOTOS -->
           <v-carousel
-            v-if="activity.photos?.length"
-            height="500"
-            hide-delimiter-background
-            delimiter-icon="mdi-circle"
-            class="mb-4 rounded-lg"
+            v-if="getPhotos(activity).length"
+            height="520"
+            hide-delimiters
             show-arrows="hover"
+            class="activity-carousel"
           >
-            <v-carousel-item v-for="photo in activity.photos" :key="photo.id">
-              <v-img
-                :src="storageUrl(photo.photo)"
-                height="100%"
-                contain
-                class="activity-image cursor-pointer"
-                @click="openImage(photo.photo)"
-              />
+            <v-carousel-item v-for="photo in getPhotos(activity)" :key="photo.id">
+              <v-img :src="storageUrl(photo.file_path)" height="520" cover />
             </v-carousel-item>
           </v-carousel>
 
-          <!-- VIDEO -->
-          <div v-if="activity.video" class="mb-4">
-            <video controls preload="none" class="activity-video">
-              <source :src="storageUrl(activity.video)" type="video/mp4" />
-            </video>
-          </div>
+          <v-card-text>
+            <!-- VIDEO -->
 
-          <!-- THERAPIST -->
-          <div class="text-h6 font-weight-bold">
-            {{ activity.therapy_session?.therapist?.name }}
-          </div>
+            <div v-if="getVideo(activity)" class="mb-4">
+              <video controls class="activity-video">
+                <source
+                  :src="storageUrl(getVideo(activity).file_path)"
+                  :type="getVideo(activity).mime_type"
+                />
+              </video>
+            </div>
 
-          <!-- CAPTION -->
-          <div v-if="activity.caption" class="text-body-1 mb-4">
-            <!-- TEXT -->
-            <span>
-              {{
-                isExpanded(activity.id)
-                  ? activity.caption
-                  : activity.caption.length > 125
-                    ? activity.caption.slice(0, 125) + '...'
-                    : activity.caption
-              }}
-            </span>
+            <!-- DESCRIPTION -->
 
-            <!-- MORE BUTTON -->
-            <span
-              v-if="activity.caption.length > 125"
-              class="caption-toggle"
-              @click="toggleCaption(activity.id)"
-            >
-              {{ isExpanded(activity.id) ? 'less' : 'more' }}
-            </span>
-          </div>
-        </v-card-text>
-      </v-card>
+            <div v-if="activity.description" class="activity-description">
+              <div style="white-space: pre-line">
+                {{ isExpanded(activity.id) ? activity.description : getShortDescription(activity) }}
+              </div>
 
-      <!-- LOAD MORE TRIGGER -->
-      <div ref="loadMoreTrigger" class="load-more-trigger">
-        <v-progress-circular v-if="loadingMore" indeterminate size="28" />
-      </div>
-    </div>
-
-    <!-- IMAGE PREVIEW -->
-    <v-dialog v-model="imageDialog" fullscreen>
-      <div class="image-preview-wrapper">
-        <v-btn icon="mdi-close" class="close-btn" @click="imageDialog = false" />
-
-        <img :src="selectedImage" alt="Activity Photo" class="preview-image" />
-      </div>
-    </v-dialog>
-
-    <!-- DELETE LOADING -->
-    <v-dialog v-model="deleting" persistent width="320">
-      <v-card rounded="xl" class="pa-8 d-flex flex-column align-center justify-center text-center">
-        <v-progress-circular indeterminate color="primary" size="56" width="5" />
-
-        <div class="text-h6 font-weight-medium mt-6">Deleting Activity...</div>
-
-        <div class="text-body-2 text-medium-emphasis mt-2">Please wait a moment</div>
-      </v-card>
-    </v-dialog>
-
-    <!-- PAGE ACTION LOADING -->
-    <v-dialog v-model="pageActionLoading" persistent fullscreen scrim="black">
-      <div class="d-flex flex-column align-center justify-center h-100">
-        <v-card rounded="xl" class="pa-8 text-center" width="320">
-          <v-progress-circular indeterminate color="primary" size="56" width="5" />
-
-          <div class="text-h6 font-weight-medium mt-6">
-            {{ pageActionText }}
-          </div>
-
-          <div class="text-body-2 text-medium-emphasis mt-2">Please wait a moment</div>
+              <span
+                v-if="activity.description.length > 125"
+                class="text-primary cursor-pointer"
+                @click="toggleDescription(activity.id)"
+              >
+                {{ isExpanded(activity.id) ? ' View less' : ' View more' }}
+              </span>
+            </div>
+          </v-card-text>
         </v-card>
       </div>
-    </v-dialog>
-  </div>
 
-  <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000" location="top right">
+      <!-- INFINITE SCROLL SENTINEL -->
+
+      <div v-if="activities.length && hasMore" v-intersect="onIntersect" class="load-more-sentinel">
+        <v-progress-circular v-if="loadingMore" indeterminate color="primary" size="32" width="3" />
+      </div>
+
+      <!-- END OF FEED -->
+
+      <div v-else-if="activities.length" class="text-center text-caption text-medium-emphasis py-6">
+        All activities have been loaded.
+      </div>
+
+      <!-- EMPTY STATE -->
+
+      <v-empty-state
+        v-if="!activities.length"
+        icon="mdi-post-outline"
+        title="No activities found"
+        text="
+      Try another child name or create
+      a new activity.
+    "
+      />
+    </div>
+  </v-container>
+
+  <v-dialog v-model="deleteDialog" max-width="420">
+    <v-card rounded="xl">
+      <v-card-title>Delete Activity</v-card-title>
+
+      <v-card-text>
+        Are you sure you want to permanently delete this activity?
+
+        <br />
+        <br />
+
+        This action cannot be undone.
+      </v-card-text>
+
+      <v-card-actions>
+        <v-spacer />
+
+        <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
+
+        <v-btn color="error" :loading="deleting" @click="deleteActivity">Delete</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+  <v-snackbar v-model="snackbar" :color="snackbarColor" location="top right" timeout="3000">
     {{ snackbarText }}
   </v-snackbar>
 </template>
 
 <script setup>
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
-
-import debounce from 'lodash/debounce'
-
 import api from '@/services/api'
-
 import { useAuthStore } from '@/stores/auth'
 
-// ======================
-// AUTH
-// ======================
+const router = useRouter()
 
 const authStore = useAuthStore()
-
-// ======================
-// ROUTER
-// ======================
-
-const router = useRouter()
 
 // ======================
 // STATE
@@ -237,49 +234,34 @@ const router = useRouter()
 
 const activities = ref([])
 
-const page = ref(1)
-
-const lastPage = ref(1)
-
-const loading = ref(false)
-
+const initialLoading = ref(false)
 const loadingMore = ref(false)
-
-const fetchingMore = ref(false)
-
-const pageLoading = ref(true)
-
-const deleting = ref(false)
 
 const search = ref('')
 
-const expandedCaptions = ref([])
+const page = ref(1)
+const lastPage = ref(1)
 
-const loadMoreTrigger = ref(null)
+const PER_PAGE = 5
 
-const pageActionLoading = ref(false)
+const hasMore = computed(() => {
+  return page.value < lastPage.value
+})
 
-const pageActionText = ref('Loading...')
+let fetchRequestId = 0
+
+const deleteDialog = ref(false)
+const deleting = ref(false)
+const activityToDelete = ref(null)
 
 const snackbar = ref(false)
-
 const snackbarText = ref('')
-
 const snackbarColor = ref('success')
 
-const imageDialog = ref(false)
+const expandedDescriptions = ref([])
+const expandedChildren = ref([])
 
-const selectedImage = ref('')
-
-let observer = null
-
-const showSnackbar = (text, color = 'success') => {
-  snackbarText.value = text
-
-  snackbarColor.value = color
-
-  snackbar.value = true
-}
+const CHILDREN_PREVIEW_LIMIT = 3
 
 // ======================
 // PERMISSION
@@ -290,90 +272,142 @@ const canManageActivity = computed(() => {
 })
 
 // ======================
-// STORAGE URL
+// FETCH ACTIVITY
 // ======================
 
-const storageUrl = (path) => {
-  return `${import.meta.env.VITE_STORAGE_URL}/${path}`
-}
+function mergeUniqueActivities(currentActivities, incomingActivities) {
+  const activityMap = new Map(currentActivities.map((activity) => [activity.id, activity]))
 
-const openImage = (path) => {
-  selectedImage.value = storageUrl(path)
-
-  imageDialog.value = true
-}
-
-// ======================
-// CAPTION
-// ======================
-
-const isExpanded = (id) => {
-  return expandedCaptions.value.includes(id)
-}
-
-const toggleCaption = (id) => {
-  if (isExpanded(id)) {
-    expandedCaptions.value = expandedCaptions.value.filter((item) => item !== id)
-  } else {
-    expandedCaptions.value.push(id)
-  }
-}
-
-// ======================
-// FORMAT DATE
-// ======================
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
+  incomingActivities.forEach((activity) => {
+    activityMap.set(activity.id, activity)
   })
+
+  return Array.from(activityMap.values())
 }
 
-// ======================
-// FETCH ACTIVITIES
-// ======================
+async function fetchActivities({ reset = false } = {}) {
+  /*
+   * Load-more tidak boleh berjalan jika:
+   * - initial request masih berjalan;
+   * - load-more sebelumnya belum selesai;
+   * - sudah berada di halaman terakhir.
+   */
+  if (!reset && (initialLoading.value || loadingMore.value || !hasMore.value)) {
+    return
+  }
 
-const fetchActivities = async (reset = false) => {
+  /*
+   * Reset menghasilkan request generation baru.
+   * Response request lama akan diabaikan.
+   */
+  const requestId = reset ? ++fetchRequestId : fetchRequestId
+
+  const targetPage = reset ? 1 : page.value + 1
+
+  if (reset) {
+    initialLoading.value = true
+    loadingMore.value = false
+
+    expandedDescriptions.value = []
+    expandedChildren.value = []
+  } else {
+    loadingMore.value = true
+  }
+
   try {
-    if (reset) {
-      page.value = 1
-
-      activities.value = []
-    }
-
-    loading.value = true
-
-    if (reset || page.value === 1) {
-      pageLoading.value = true
-    } else {
-      loadingMore.value = true
-    }
-
-    const res = await api.get('/activities', {
+    const response = await api.get('/activities', {
       params: {
-        page: page.value,
-
-        per_page: 10,
-
-        search: search.value,
+        page: targetPage,
+        per_page: PER_PAGE,
+        search: search.value.trim() || undefined,
       },
     })
 
-    const newData = res.data.data
+    /*
+     * Abaikan response lama jika user sudah
+     * memulai search/reset baru.
+     */
+    if (requestId !== fetchRequestId) {
+      return
+    }
 
-    activities.value = [...activities.value, ...newData]
+    const incomingActivities = response.data.data ?? []
 
-    lastPage.value = res.data.last_page
-  } catch (err) {
-    console.error(err)
+    if (reset) {
+      activities.value = incomingActivities
+    } else {
+      activities.value = mergeUniqueActivities(activities.value, incomingActivities)
+    }
+
+    page.value = response.data.current_page ?? targetPage
+
+    lastPage.value = response.data.last_page ?? 1
+  } catch (error) {
+    if (requestId !== fetchRequestId) {
+      return
+    }
+
+    console.error(error)
+
+    if (reset) {
+      activities.value = []
+      page.value = 1
+      lastPage.value = 1
+    }
+
+    snackbar.value = true
+    snackbarColor.value = 'error'
+    snackbarText.value = 'Failed to load activities.'
   } finally {
-    loading.value = false
+    if (requestId !== fetchRequestId) {
+      return
+    }
 
+    initialLoading.value = false
     loadingMore.value = false
+  }
+}
 
-    pageLoading.value = false
+async function backfillAfterDelete() {
+  /*
+   * Ambil ulang halaman terakhir yang sudah dimuat.
+   * Setelah satu data dihapus, satu postingan dari
+   * halaman berikutnya akan bergeser ke halaman ini.
+   */
+  const targetPage = Math.max(page.value, 1)
+
+  loadingMore.value = true
+
+  try {
+    const response = await api.get('/activities', {
+      params: {
+        page: targetPage,
+        per_page: PER_PAGE,
+        search: search.value.trim() || undefined,
+      },
+    })
+
+    const incomingActivities = response.data.data ?? []
+
+    activities.value = mergeUniqueActivities(activities.value, incomingActivities)
+
+    lastPage.value = response.data.last_page ?? 1
+
+    /*
+     * Halaman terakhir bisa berkurang setelah delete.
+     */
+    page.value = Math.min(targetPage, lastPage.value)
+
+    page.value = Math.max(page.value, 1)
+  } catch (error) {
+    /*
+     * Delete tetap dianggap berhasil.
+     * Kegagalan backfill tidak mengembalikan
+     * Activity yang sudah dihapus.
+     */
+    console.error('Failed to backfill activities after delete.', error)
+  } finally {
+    loadingMore.value = false
   }
 }
 
@@ -381,95 +415,200 @@ const fetchActivities = async (reset = false) => {
 // SEARCH
 // ======================
 
-const debouncedFetch = debounce(() => {
-  fetchActivities(true)
-}, 500)
+function searchActivity() {
+  fetchActivities({
+    reset: true,
+  })
+}
 
-watch(search, () => {
-  debouncedFetch()
-})
+function clearSearch() {
+  search.value = ''
+
+  fetchActivities({
+    reset: true,
+  })
+}
 
 // ======================
-// LOAD MORE
+// INFINITE SCROLL
 // ======================
 
-const loadMore = async () => {
-  if (fetchingMore.value || loadingMore.value) {
+function onIntersect(isIntersecting) {
+  if (!isIntersecting) {
     return
   }
 
-  if (page.value >= lastPage.value) {
+  fetchActivities()
+}
+
+// ======================
+// FORMAT
+// ======================
+
+function formatDate(date) {
+  if (!date) return '-'
+
+  const formattedDate = new Date(date).toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+
+  const formattedTime = new Date(date).toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+
+  return `${formattedDate} at ${formattedTime}`
+}
+
+// ======================
+// MEDIA
+// ======================
+
+function getPhotos(activity) {
+  return activity.media?.filter((media) => media.media_type === 'photo') ?? []
+}
+
+function getVideo(activity) {
+  return activity.media?.find((media) => media.media_type === 'video')
+}
+
+function isExpanded(activityId) {
+  return expandedDescriptions.value.includes(activityId)
+}
+
+function toggleDescription(activityId) {
+  if (isExpanded(activityId)) {
+    expandedDescriptions.value = expandedDescriptions.value.filter((id) => id !== activityId)
+  } else {
+    expandedDescriptions.value.push(activityId)
+  }
+}
+
+function getShortDescription(activity) {
+  const text = activity.description ?? ''
+
+  if (text.length <= 125) {
+    return text
+  }
+
+  return text.substring(0, 125) + '...'
+}
+
+function getSessionText(activity) {
+  const session = activity.program_category_session_time
+
+  if (!session) {
+    return '-'
+  }
+
+  const startTime = session.start_time?.slice(0, 5)
+
+  const endTime = session.end_time?.slice(0, 5)
+
+  const timeRange = startTime && endTime ? `${startTime} - ${endTime}` : null
+
+  return [session.session_name, timeRange].filter(Boolean).join(' • ')
+}
+
+const areChildrenExpanded = (activityId) => {
+  return expandedChildren.value.includes(activityId)
+}
+
+const toggleChildren = (activityId) => {
+  if (areChildrenExpanded(activityId)) {
+    expandedChildren.value = expandedChildren.value.filter((id) => id !== activityId)
+
     return
   }
 
-  try {
-    fetchingMore.value = true
+  expandedChildren.value.push(activityId)
+}
 
-    page.value++
+const visibleChildren = (activity) => {
+  const children = activity.children ?? []
 
-    await fetchActivities()
-  } finally {
-    fetchingMore.value = false
+  if (areChildrenExpanded(activity.id)) {
+    return children
   }
+
+  return children.slice(0, CHILDREN_PREVIEW_LIMIT)
+}
+
+const remainingChildrenCount = (activity) => {
+  return Math.max((activity.children?.length ?? 0) - CHILDREN_PREVIEW_LIMIT, 0)
 }
 
 // ======================
-// CREATE
+// STORAGE
 // ======================
 
-const goToCreate = async () => {
-  pageActionText.value = 'Opening Activity Form...'
-
-  pageActionLoading.value = true
-
-  try {
-    await router.push('/activity/create')
-  } finally {
-    setTimeout(() => {
-      pageActionLoading.value = false
-    }, 300)
+function storageUrl(path) {
+  if (!path) {
+    return ''
   }
+
+  return `${import.meta.env.VITE_STORAGE_URL}/${path}`
 }
 
 // ======================
-// EDIT
+// ACTION
 // ======================
 
-const goToEdit = async (id) => {
-  pageActionText.value = 'Opening Activity...'
-
-  pageActionLoading.value = true
-
-  try {
-    await router.push(`/activity/${id}/edit`)
-  } finally {
-    setTimeout(() => {
-      pageActionLoading.value = false
-    }, 300)
-  }
+function goToEdit(id) {
+  router.push(`/activity/${id}/edit`)
 }
 
-// ======================
-// DELETE
-// ======================
+function confirmDelete(activity) {
+  activityToDelete.value = activity
+  deleteDialog.value = true
+}
 
-const deleteActivity = async (id) => {
-  const confirmed = confirm('Delete this activity?')
+async function deleteActivity() {
+  if (!activityToDelete.value) {
+    return
+  }
 
-  if (!confirmed) return
+  const deletedActivityId = activityToDelete.value.id
+
+  deleting.value = true
 
   try {
-    deleting.value = true
+    await api.delete(`/activities/${deletedActivityId}`)
 
-    await api.delete(`/activities/${id}`)
+    /*
+     * Hapus langsung dari tampilan.
+     */
+    activities.value = activities.value.filter((activity) => activity.id !== deletedActivityId)
 
-    activities.value = activities.value.filter((activity) => activity.id !== id)
+    /*
+     * Bersihkan state View More/Show Less
+     * milik Activity yang dihapus.
+     */
+    expandedDescriptions.value = expandedDescriptions.value.filter((id) => id !== deletedActivityId)
 
-    showSnackbar('Activity deleted successfully')
-  } catch (err) {
-    console.error(err)
+    expandedChildren.value = expandedChildren.value.filter((id) => id !== deletedActivityId)
 
-    showSnackbar('Failed to delete activity', 'error')
+    deleteDialog.value = false
+    activityToDelete.value = null
+
+    snackbar.value = true
+    snackbarColor.value = 'success'
+    snackbarText.value = 'Activity deleted successfully.'
+
+    /*
+     * Isi kembali posisi kosong jika masih ada
+     * Activity pada halaman berikutnya.
+     */
+    await backfillAfterDelete()
+  } catch (error) {
+    console.error(error)
+
+    snackbar.value = true
+    snackbarColor.value = 'error'
+    snackbarText.value = error.response?.data?.message ?? 'Failed to delete activity.'
   } finally {
     deleting.value = false
   }
@@ -479,231 +618,46 @@ const deleteActivity = async (id) => {
 // INIT
 // ======================
 
-onMounted(async () => {
-  await fetchActivities()
-
-  observer = new IntersectionObserver(
-    (entries) => {
-      if (entries[0].isIntersecting) {
-        loadMore()
-      }
-    },
-
-    {
-      threshold: 0.5,
-    },
-  )
-
-  if (loadMoreTrigger.value) {
-    observer.observe(loadMoreTrigger.value)
-  }
-})
-
-// ======================
-// CLEANUP
-// ======================
-
-onBeforeUnmount(() => {
-  debouncedFetch.cancel()
-
-  if (observer) {
-    observer.disconnect()
-  }
+onMounted(() => {
+  fetchActivities({
+    reset: true,
+  })
 })
 </script>
 
 <style scoped>
-.activity-page {
-  width: 100%;
-}
-
-.page-header {
-  display: flex;
-
-  justify-content: space-between;
-
-  align-items: center;
-
-  gap: 16px;
-
-  flex-wrap: wrap;
-}
-
-.feed-wrapper {
-  width: 100%;
-}
-
 .activity-card {
-  transition: all 0.2s ease;
-}
-
-.activity-card:hover {
-  transform: translateY(-2px);
-}
-
-.activity-content {
-  line-height: 1.8;
-}
-
-.activity-image {
-  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
 }
 
 .activity-video {
   width: 100%;
-
-  max-height: 500px;
-
-  border-radius: 16px;
-
-  background: black;
+  max-height: 400px;
+  border-radius: 12px;
 }
 
-.caption-toggle {
-  margin-left: 6px;
-
-  font-weight: 600;
-
-  color: rgb(25, 118, 210);
-
-  cursor: pointer;
+.activity-wrapper {
+  max-width: 760px;
+  margin: 0 auto 20px;
 }
 
-.cursor-pointer {
-  cursor: pointer;
+.activity-carousel {
+  background: #f5f5f5;
 }
 
-.load-more-trigger {
-  display: flex;
-
-  justify-content: center;
-
-  align-items: center;
-
-  height: 80px;
-}
-
-.image-preview-wrapper {
-  width: 100vw;
-  height: 100vh;
-
-  background: black;
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.preview-image {
-  max-width: 95vw;
-  max-height: 95vh;
-
+.activity-carousel :deep(.v-img__img) {
   object-fit: contain;
 }
 
-.close-btn {
-  position: fixed !important;
-
-  top: 16px;
-  right: 16px;
-
-  z-index: 9999;
+.children-toggle {
+  font-weight: 600;
+  text-transform: none;
 }
 
-.photo-grid {
-  display: grid;
-
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-
-  gap: 12px;
-}
-
-.v-carousel {
-  border-radius: 16px;
-
-  overflow: hidden;
-}
-
-/* carousel controls */
-
-:deep(.v-window__left),
-:deep(.v-window__right) {
-  opacity: 0.35;
-
-  transition: opacity 0.2s ease;
-}
-
-:deep(.v-window__left .v-btn),
-:deep(.v-window__right .v-btn) {
-  width: 32px !important;
-  height: 32px !important;
-}
-
-:deep(.v-carousel__controls__item) {
-  transform: scale(0.7);
-
-  opacity: 0.5;
-}
-
-:deep(.v-carousel__controls__item--active) {
-  opacity: 1;
-}
-
-@media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-
-    align-items: stretch;
-  }
-
-  .feed-wrapper {
-    max-width: 100%;
-
-    padding: 0 4px;
-  }
-
-  .activity-card {
-    border-radius: 16px;
-  }
-
-  .activity-content {
-    font-size: 14px;
-
-    line-height: 1.7;
-  }
-
-  .activity-video {
-    max-height: 260px;
-  }
-}
-
-@media (max-width: 600px) {
-  .page-header h1 {
-    font-size: 28px !important;
-
-    line-height: 1.2;
-  }
-
-  .page-header p {
-    font-size: 13px;
-  }
-
-  .v-card-text {
-    padding: 16px !important;
-  }
-
-  .d-flex.ga-2 {
-    flex-wrap: wrap;
-  }
-
-  .d-flex.ga-6 {
-    gap: 16px !important;
-
-    flex-wrap: wrap;
-  }
-
-  video.activity-video {
-    border-radius: 12px;
-  }
+.load-more-sentinel {
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

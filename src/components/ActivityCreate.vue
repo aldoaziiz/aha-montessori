@@ -1,292 +1,197 @@
 <template>
-  <div class="activity-create-page">
-    <!-- HEADER -->
-    <div class="page-header mb-6">
-      <div>
-        <h1 class="text-h4 font-weight-bold mb-2">Create Activity</h1>
+  <v-container class="py-6 px-4 px-md-8">
+    <!-- Header -->
+    <v-row align="center" class="mb-6">
+      <v-col>
+        <h1 class="text-h4 font-weight-bold">Create Activity</h1>
 
-        <p class="text-body-2 text-grey">Create therapy session activity documentation.</p>
-      </div>
+        <p class="text-medium-emphasis mt-1">Create a new activity for children.</p>
+      </v-col>
 
-      <v-btn variant="tonal" prepend-icon="mdi-arrow-left" @click="goBack">Back</v-btn>
-    </div>
+      <!-- Desktop -->
+      <v-col cols="auto" class="d-none d-sm-flex">
+        <v-btn variant="tonal" prepend-icon="mdi-arrow-left" @click="router.push('/activity')">
+          Back
+        </v-btn>
+      </v-col>
 
-    <!-- SESSION LOADING -->
-    <v-card v-if="pageLoading" elevation="1" class="mb-4 rounded-xl">
-      <v-skeleton-loader
-        type="
-          article,
-          paragraph,
-          paragraph
-        "
-      />
-    </v-card>
+      <!-- Mobile -->
+      <v-col cols="12" class="d-flex d-sm-none pt-0">
+        <v-btn
+          variant="tonal"
+          prepend-icon="mdi-arrow-left"
+          block
+          @click="router.push('/activity')"
+        >
+          Back
+        </v-btn>
+      </v-col>
+    </v-row>
 
-    <!-- CONTENT -->
-    <template v-else>
-      <!-- SELECT SESSION -->
-      <v-card elevation="1" class="mb-4 rounded-xl">
-        <v-card-title>Select Therapy Session</v-card-title>
-
-        <v-card-text>
-          <!-- SEARCH -->
-          <v-text-field
-            v-model="search"
-            label="Search Child"
-            prepend-inner-icon="mdi-magnify"
-            variant="outlined"
-            density="comfortable"
-            hide-details
-            clearable
-            class="mb-4"
-          />
-
-          <!-- SCROLL -->
-          <div class="session-scroll">
-            <!-- SESSION LIST -->
-            <div class="session-list">
-              <v-card
-                v-for="session in filteredSessions"
-                :key="session.id"
-                elevation="0"
-                class="session-card rounded-xl"
-                :class="{
-                  'session-selected': selectedSession === session.id,
-
-                  'session-disabled': session.activity,
-                }"
-                @click="selectSession(session)"
-              >
-                <v-card-text>
-                  <div class="d-flex justify-space-between align-start ga-4 flex-wrap">
-                    <!-- LEFT -->
-                    <div>
-                      <!-- CHILD -->
-                      <div class="text-h6 font-weight-bold mb-1">
-                        {{ session.registration?.child?.name }}
-                      </div>
-
-                      <div class="text-h6 mb-1">
-                        {{ session.registration?.registration_number }}
-                      </div>
-
-                      <!-- CHIPS -->
-                      <div class="d-flex flex-wrap ga-2">
-                        <!-- DATE -->
-                        <v-chip size="small" variant="tonal">
-                          {{ formatDate(session.therapy_date) }}
-                        </v-chip>
-
-                        <!-- TIME -->
-                        <v-chip size="small" variant="tonal">
-                          {{ session.start_time?.slice(0, 5) }}
-
-                          -
-
-                          {{ session.end_time?.slice(0, 5) }}
-                        </v-chip>
-                      </div>
-                    </div>
-
-                    <!-- RIGHT -->
-                    <div class="text-right">
-                      <div class="text-caption text-grey mb-1">Therapist</div>
-
-                      <div class="font-weight-medium mb-2">
-                        {{ session.therapist?.name }}
-                      </div>
-
-                      <v-chip v-if="session.activity" color="success" variant="tonal" size="small">
-                        Already Documented
-                      </v-chip>
-
-                      <v-chip v-else color="primary" variant="tonal" size="small">
-                        Select Session
-                      </v-chip>
-                    </div>
-                  </div>
-                </v-card-text>
-              </v-card>
-            </div>
-          </div>
-        </v-card-text>
-      </v-card>
-
-      <!-- SELECTED SESSION -->
-      <v-card v-if="selectedSessionData" elevation="1" class="mb-4 rounded-xl">
-        <v-card-title>Selected Therapy Session</v-card-title>
-
-        <v-card-text>
-          <v-row>
-            <!-- CHILD -->
-            <v-col cols="12" md="4">
-              <div class="text-caption text-grey mb-1">Child</div>
-
-              <div class="font-weight-medium text-body-1">
-                {{ selectedSessionData.registration?.child?.name }}
-              </div>
-            </v-col>
-
-            <v-col cols="12" md="4">
-              <div class="text-caption text-grey mb-1">Reg. No.</div>
-
-              <div class="font-weight-medium text-body-1">
-                {{ selectedSessionData.registration?.registration_number }}
-              </div>
-            </v-col>
-
-            <!-- THERAPIST -->
-            <v-col cols="12" md="4">
-              <div class="text-caption text-grey mb-1">Therapist</div>
-
-              <div class="font-weight-medium text-body-1">
-                {{ selectedSessionData.therapist?.name }}
-              </div>
-            </v-col>
-
-            <!-- DATE -->
-            <v-col cols="12" md="4">
-              <div class="text-caption text-grey mb-1">Date</div>
-
-              <div class="font-weight-medium text-body-1">
-                {{ formatDate(selectedSessionData.therapy_date) }}
-              </div>
-            </v-col>
-
-            <!-- TIME -->
-            <v-col cols="12" md="4">
-              <div class="text-caption text-grey mb-1">Time</div>
-
-              <div class="font-weight-medium text-body-1">
-                {{ selectedSessionData.start_time?.slice(0, 5) }}
-
-                -
-
-                {{ selectedSessionData.end_time?.slice(0, 5) }}
-              </div>
-            </v-col>
-          </v-row>
-        </v-card-text>
-      </v-card>
-
-      <!-- FORM -->
-      <v-card elevation="1" class="rounded-xl">
-        <v-card-title>Activity Documentation</v-card-title>
-
-        <v-card-text>
-          <v-row>
-            <!-- CAPTION -->
-            <v-col cols="12">
-              <v-textarea
-                v-model="form.caption"
-                label="Activity Caption"
-                variant="outlined"
-                rows="5"
-                auto-grow
-                placeholder="
-                  Write activity summary
-                  and therapy progress...
-                "
-              />
-            </v-col>
-
-            <!-- PHOTOS -->
-            <v-col cols="12">
-              <div class="text-subtitle-1 font-weight-medium mb-3">Photos</div>
-
-              <v-file-input
-                multiple
-                chips
-                prepend-icon="mdi-camera"
-                variant="outlined"
-                label="Upload Photos"
-                v-model="form.photos"
-                accept="image/*"
-                show-size
-              />
-            </v-col>
-
-            <!-- VIDEO -->
-            <v-col cols="12">
-              <div class="text-subtitle-1 font-weight-medium mb-3">Video</div>
-
-              <v-file-input
-                v-model="form.video"
-                :multiple="false"
-                prepend-icon="mdi-video"
-                variant="outlined"
-                label="Upload Video"
-                accept="video/*"
-                show-size
-              />
-            </v-col>
-          </v-row>
-        </v-card-text>
-
-        <!-- ACTION -->
-        <v-progress-linear
-          v-if="loading"
-          :model-value="uploadProgress"
-          color="primary"
-          height="8"
-          rounded
+    <v-card rounded="lg" elevation="2">
+      <v-card-text>
+        <!-- Program Category -->
+        <v-text-field
+          v-model="form.therapy_date"
+          label="Activity Date"
+          type="date"
+          variant="outlined"
+          prepend-inner-icon="mdi-calendar"
           class="mb-4"
         />
 
-        <div v-if="loading" class="text-center text-body-2 text-medium-emphasis mb-4">
-          Uploading video... {{ uploadProgress }}%
-          <br />
-          Please do not close this page until the upload is complete.
-        </div>
-        <v-card-actions class="px-6 pb-6">
-          <v-spacer />
+        <v-autocomplete
+          v-model="form.program_category_id"
+          :items="programCategories"
+          item-title="name"
+          item-value="id"
+          label="Program Category"
+          variant="outlined"
+          density="comfortable"
+          class="mb-5"
+        />
 
-          <v-btn variant="tonal" @click="goBack">Cancel</v-btn>
+        <v-autocomplete
+          v-model="selectedSession"
+          :items="schoolSessions"
+          item-title="label"
+          item-value="id"
+          return-object
+          label="School Session"
+          variant="outlined"
+          density="comfortable"
+          class="mb-5"
+        />
 
-          <v-btn
-            color="primary"
-            prepend-icon="
-              mdi-content-save
-            "
-            :loading="loading"
-            :disabled="loading"
-            @click="saveActivity"
-          >
-            {{ loading ? `Uploading... ${uploadProgress}%` : 'Save' }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </template>
+        <!-- Children -->
+        <v-card variant="tonal" rounded="lg" class="mb-5">
+          <v-card-text>
+            <div class="text-subtitle-1 font-weight-medium mb-3">Children</div>
 
-    <!-- FULLSCREEN LOADING -->
-    <v-dialog v-model="loading" persistent fullscreen scrim="black">
-      <div class="d-flex flex-column align-center justify-center h-100">
-        <v-card rounded="xl" class="pa-8 text-center" width="320">
-          <v-progress-circular indeterminate color="primary" size="56" width="5" />
+            <v-checkbox
+              v-model="selectAllChildren"
+              label="Select All Children"
+              @update:model-value="toggleSelectAll"
+              hide-details
+              class="mb-3"
+            />
 
-          <div class="text-h6 font-weight-medium mt-6">
-            {{ uploadLoadingText }}
-          </div>
-
-          <div class="text-body-2 text-medium-emphasis mt-2">Please wait a moment</div>
+            <v-autocomplete
+              v-model="form.child_ids"
+              :items="children"
+              item-title="name"
+              item-value="id"
+              label="Select Children"
+              variant="outlined"
+              density="comfortable"
+              multiple
+              chips
+              closable-chips
+            />
+          </v-card-text>
         </v-card>
-      </div>
-    </v-dialog>
-  </div>
+
+        <!-- Description -->
+        <v-textarea
+          v-model="form.description"
+          label="Description"
+          variant="outlined"
+          rows="5"
+          auto-grow
+          counter="5000"
+          class="mb-5"
+        />
+
+        <!-- Photos -->
+        <div class="mb-2">
+          <div class="text-subtitle-1 font-weight-medium">Photos</div>
+
+          <div class="text-caption text-medium-emphasis">
+            Maximum 10 photos. Each photo must not exceed 5 MB.
+          </div>
+        </div>
+        <v-card variant="outlined" rounded="lg" class="mb-5">
+          <v-card-text>
+            <v-file-input
+              v-model="photos"
+              label="Add Photos"
+              multiple
+              accept="image/*"
+              :error-messages="photoErrors"
+              show-size
+            />
+
+            <v-row v-if="photoPreviews.length" class="mt-2">
+              <v-col v-for="(photo, index) in photoPreviews" :key="index" cols="6" md="3">
+                <v-img :src="photo" height="140" cover rounded />
+              </v-col>
+            </v-row>
+          </v-card-text>
+        </v-card>
+
+        <!-- Video -->
+        <div class="mb-2">
+          <div class="text-subtitle-1 font-weight-medium">Video</div>
+
+          <div class="text-caption text-medium-emphasis">
+            Maximum 1 video. File size must not exceed 75 MB.
+          </div>
+        </div>
+        <v-card variant="outlined" rounded="lg" class="mb-5">
+          <v-card-text>
+            <v-file-input
+              v-model="video"
+              label="Add Video"
+              accept="video/*"
+              :error-messages="videoError"
+              show-size
+            />
+
+            <video
+              v-if="videoPreview"
+              :src="videoPreview"
+              controls
+              style="width: 100%; border-radius: 12px"
+            />
+          </v-card-text>
+        </v-card>
+      </v-card-text>
+
+      <v-divider />
+
+      <v-card-actions class="pa-4">
+        <v-spacer />
+
+        <v-btn variant="text" @click="$router.back()">Cancel</v-btn>
+
+        <v-btn color="primary" size="large" prepend-icon="mdi-send" @click="submit">
+          Post Activity
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+
+    <!-- Loading -->
+    <v-overlay :model-value="uploading" persistent class="align-center justify-center">
+      <v-card width="320" class="pa-6">
+        <div class="text-h6 mb-4">Uploading...</div>
+
+        <v-progress-linear :model-value="uploadProgress" height="10" rounded color="primary" />
+
+        <div class="text-center mt-3">{{ uploadProgress }}%</div>
+      </v-card>
+    </v-overlay>
+
+    <!-- Snackbar -->
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" location="top end">
+      {{ snackbar.text }}
+    </v-snackbar>
+  </v-container>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
-
-import debounce from 'lodash/debounce'
-
-import api from '@/services/api'
-
+import { ref, reactive, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-
-// ======================
-// ROUTER
-// ======================
+import api from '@/services/api'
 
 const router = useRouter()
 
@@ -294,226 +199,382 @@ const router = useRouter()
 // STATE
 // ======================
 
-const sessions = ref([])
+const loading = ref(false) // Loading data (master data, children)
+const uploading = ref(false) // Upload activity
+const uploadProgress = ref(0)
+
+const programCategories = ref([])
+
+const children = ref([])
+const schoolSessions = ref([])
 
 const selectedSession = ref(null)
 
-const search = ref('')
+const photos = ref([])
 
-const debouncedSearch = ref('')
+const video = ref(null)
 
-const loading = ref(false)
+const photoPreviews = ref([])
 
-const pageLoading = ref(true)
+const videoPreview = ref(null)
 
-const uploadProgress = ref(0)
+const selectAllChildren = ref(false)
+const photoErrors = ref([])
+const videoError = ref([])
 
-const uploadLoadingText = ref('Uploading Activity...')
-
-const form = ref({
-  caption: '',
-  photos: [],
-  video: null,
+const snackbar = reactive({
+  show: false,
+  color: 'success',
+  text: '',
 })
 
-// ======================
-// BACK
-// ======================
+const getVideoFile = (value) => {
+  if (!value) return null
 
-const goBack = async () => {
-  loading.value = true
+  return Array.isArray(value) ? (value[0] ?? null) : value
+}
 
-  uploadLoadingText.value = 'Returning...'
+const form = reactive({
+  therapy_date: new Date().toISOString().slice(0, 10),
 
-  try {
-    await router.push('/activity')
-  } finally {
-    setTimeout(() => {
-      loading.value = false
-    }, 300)
+  program_category_id: null,
+
+  child_ids: [],
+
+  description: '',
+})
+
+function toggleSelectAll(checked) {
+  if (checked) {
+    form.child_ids = children.value.map((child) => child.id)
+  } else {
+    form.child_ids = []
   }
 }
 
 // ======================
-// FETCH SESSIONS
+// WATCH
 // ======================
 
-const fetchSessions = async () => {
-  try {
-    pageLoading.value = true
+watch(
+  () => form.child_ids,
+  (selected) => {
+    const allSelected = selected.length === children.value.length && children.value.length > 0
 
-    const res = await api.get('/therapy-sessions', {
+    if (selectAllChildren.value !== allSelected) {
+      selectAllChildren.value = allSelected
+    }
+  },
+  {
+    deep: true,
+  },
+)
+
+watch(photos, (files) => {
+  photoErrors.value = []
+
+  photoPreviews.value.forEach((url) => {
+    URL.revokeObjectURL(url)
+  })
+
+  photoPreviews.value = []
+
+  if (!files) return
+
+  if (files.length > 10) {
+    photoErrors.value = ['Maximum 10 photos.']
+
+    photos.value = []
+
+    return
+  }
+
+  const maxSize = 10 * 1024 * 1024
+
+  for (const file of files) {
+    if (file.size > maxSize) {
+      photoErrors.value = ['Max 10 MB per photo.']
+
+      photos.value = []
+
+      return
+    }
+  }
+
+  files.forEach((file) => {
+    photoPreviews.value.push(URL.createObjectURL(file))
+  })
+})
+
+watch(video, (value) => {
+  videoError.value = []
+
+  const file = getVideoFile(value)
+
+  if (videoPreview.value) {
+    URL.revokeObjectURL(videoPreview.value)
+    videoPreview.value = null
+  }
+
+  if (!file) {
+    videoPreview.value = null
+
+    return
+  }
+
+  const maxSize = 75 * 1024 * 1024
+
+  if (file.size > maxSize) {
+    videoError.value = ['Max 75 MB video.']
+
+    video.value = null
+
+    return
+  }
+
+  videoPreview.value = URL.createObjectURL(file)
+})
+
+watch(
+  () => form.program_category_id,
+  async (id) => {
+    form.child_ids = []
+
+    children.value = []
+
+    schoolSessions.value = []
+
+    selectedSession.value = null
+
+    selectAllChildren.value = false
+
+    if (!id) return
+
+    await Promise.all([fetchChildren(id), fetchSchoolSessions(id)])
+  },
+)
+
+// ======================
+// FETCH
+// ======================
+
+async function fetchProgramCategories() {
+  try {
+    loading.value = true
+
+    const response = await api.get('/master-data')
+
+    programCategories.value = response.data.program_categories ?? []
+  } catch (error) {
+    console.error(error)
+
+    showError('Failed to load program categories.')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function fetchSchoolSessions(programCategoryId) {
+  try {
+    const response = await api.get(`/program-categories/${programCategoryId}/session-times`)
+
+    schoolSessions.value = (response.data.data ?? []).map((session) => ({
+      ...session,
+
+      label: `${session.session_name} • ${session.start_time.slice(0, 5)} - ${session.end_time.slice(0, 5)}`,
+    }))
+  } catch (error) {
+    console.error(error)
+
+    schoolSessions.value = []
+
+    showError('Failed to load session times.')
+  }
+}
+
+async function fetchChildren(programCategoryId) {
+  try {
+    const response = await api.get('/therapy-sessions/activity-children', {
       params: {
-        without_activity: 1,
-        per_page: 100,
+        program_category_id: programCategoryId,
       },
     })
 
-    sessions.value = res.data.data
-  } catch (err) {
-    console.error(err)
-  } finally {
-    pageLoading.value = false
+    children.value = response.data.data ?? []
+  } catch (error) {
+    console.error(error)
+
+    children.value = []
+
+    showError('Failed to load children.')
   }
 }
 
 // ======================
-// SEARCH
+// PHOTO
 // ======================
 
-const debounceSearchHandler = debounce((value) => {
-  debouncedSearch.value = value
-}, 300)
+function removePhoto(index) {
+  URL.revokeObjectURL(photoPreviews.value[index])
 
-watch(search, (value) => {
-  debounceSearchHandler(value)
-})
+  photos.value.splice(index, 1)
 
-// ======================
-// FILTERED SESSIONS
-// ======================
-
-const filteredSessions = computed(() => {
-  if (!debouncedSearch.value) {
-    return sessions.value
-  }
-
-  return sessions.value.filter((session) => {
-    return session.registration?.child?.name
-      ?.toLowerCase()
-      .includes(debouncedSearch.value.toLowerCase())
-  })
-})
-
-// ======================
-// SELECT SESSION
-// ======================
-
-const selectSession = (session) => {
-  if (session.activity) {
-    return
-  }
-
-  selectedSession.value = session.id
+  photoPreviews.value.splice(index, 1)
 }
 
 // ======================
-// SELECTED SESSION
+// VIDEO
 // ======================
 
-const selectedSessionData = computed(() => {
-  return sessions.value.find((session) => session.id === selectedSession.value)
-})
+function removeVideo() {
+  if (videoPreview.value) {
+    URL.revokeObjectURL(videoPreview.value)
+  }
 
-// ======================
-// FORMAT DATE
-// ======================
+  video.value = null
 
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
+  videoPreview.value = null
 }
 
 // ======================
-// SAVE
+// SUBMIT
 // ======================
 
-const saveActivity = async () => {
-  if (loading.value) return
+async function submit() {
+  uploadProgress.value = 0
+
+  if (!form.program_category_id) {
+    return showError('Please select a program category.')
+  }
 
   if (!selectedSession.value) {
-    alert('Please select therapy session')
+    return showError('Please select a school session.')
+  }
 
+  if (!form.child_ids.length) {
+    return showError('Please select at least one child.')
+  }
+
+  if (photoErrors.value.length) {
     return
   }
 
-  // ======================
-  // VIDEO LIMIT
-  // ======================
-
-  const maxVideoSize = 100 * 1024 * 1024
-
-  if (form.value.video && form.value.video.size > maxVideoSize) {
-    alert('Video max size is 100 MB')
-
+  if (videoError.value.length) {
     return
+  }
+
+  const hasDescription = form.description?.trim().length > 0
+
+  const hasPhotos = photos.value.length > 0
+
+  const hasVideo = !!video.value
+
+  if (!hasDescription && !hasPhotos && !hasVideo) {
+    return showError('Description, photos, or video is required.')
   }
 
   try {
-    uploadProgress.value = 0
-    loading.value = true
-
-    uploadLoadingText.value = 'Uploading Activity...'
+    uploading.value = true
 
     const payload = new FormData()
 
-    // ======================
-    // BASIC DATA
-    // ======================
+    payload.append('program_category_id', form.program_category_id)
 
-    payload.append('therapy_session_id', selectedSession.value)
+    payload.append('therapy_date', form.therapy_date)
 
-    payload.append('caption', form.value.caption || '')
+    payload.append('program_category_session_time_id', selectedSession.value.id)
 
-    // ======================
-    // VIDEO
-    // ======================
+    payload.append('description', form.description)
 
-    if (form.value.video) {
-      payload.append('video', form.value.video)
+    form.child_ids.forEach((id) => {
+      payload.append('child_ids[]', id)
+    })
+
+    photos.value.forEach((photo) => {
+      payload.append('photos[]', photo)
+    })
+
+    if (video.value) {
+      const videoFile = getVideoFile(video.value)
+
+      if (videoFile) {
+        payload.append('video', videoFile)
+      }
     }
-
-    // ======================
-    // PHOTOS
-    // ======================
-
-    if (form.value.photos?.length) {
-      form.value.photos.forEach((photo) => {
-        payload.append('photos[]', photo)
-      })
-    }
-
-    // ======================
-    // API
-    // ======================
 
     await api.post('/activities', payload, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
 
-      onUploadProgress: (progressEvent) => {
-        if (progressEvent.total) {
-          uploadProgress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-        }
+      onUploadProgress(progressEvent) {
+        uploadProgress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total)
       },
     })
 
-    uploadProgress.value = 100
-
-    alert('Activity created successfully')
-
-    form.value = {
-      caption: '',
-      photos: [],
-      video: null,
-    }
+    form.program_category_id = null
 
     selectedSession.value = null
 
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    await router.push('/activity')
-  } catch (err) {
-    console.error(err)
+    schoolSessions.value = []
 
-    alert(err.response?.data?.message || 'Failed to create activity')
+    form.child_ids = []
+
+    selectAllChildren.value = false
+
+    form.description = ''
+
+    photos.value = []
+
+    video.value = null
+
+    photoPreviews.value.forEach((url) => {
+      URL.revokeObjectURL(url)
+    })
+
+    if (videoPreview.value) {
+      URL.revokeObjectURL(videoPreview.value)
+    }
+
+    photoPreviews.value = []
+
+    videoPreview.value = null
+
+    selectAllChildren.value = false
+
+    children.value = []
+
+    showSuccess('Activity created successfully.')
+
+    setTimeout(() => {
+      router.push('/activity')
+    }, 800)
+  } catch (e) {
+    showError(e.response?.data?.message ?? 'Failed to create activity.')
   } finally {
-    loading.value = false
+    uploading.value = false
     uploadProgress.value = 0
   }
+}
+
+// ======================
+// SNACKBAR
+// ======================
+
+function showSuccess(text) {
+  snackbar.color = 'success'
+
+  snackbar.text = text
+
+  snackbar.show = true
+}
+
+function showError(text) {
+  snackbar.color = 'error'
+
+  snackbar.text = text
+
+  snackbar.show = true
 }
 
 // ======================
@@ -521,166 +582,6 @@ const saveActivity = async () => {
 // ======================
 
 onMounted(() => {
-  fetchSessions()
-})
-
-// ======================
-// CLEANUP
-// ======================
-
-onBeforeUnmount(() => {
-  debounceSearchHandler.cancel()
+  fetchProgramCategories()
 })
 </script>
-
-<style scoped>
-.activity-create-page {
-  width: 100%;
-}
-
-.page-header {
-  display: flex;
-
-  justify-content: space-between;
-
-  align-items: center;
-
-  gap: 16px;
-
-  flex-wrap: wrap;
-}
-
-.session-scroll {
-  max-height: 500px;
-
-  overflow-y: auto;
-
-  padding-right: 4px;
-}
-
-.session-scroll::-webkit-scrollbar {
-  width: 8px;
-}
-
-.session-scroll::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-
-  border-radius: 999px;
-}
-
-.session-list {
-  display: flex;
-
-  flex-direction: column;
-
-  gap: 12px;
-}
-
-.session-card {
-  border: 1px solid rgba(0, 0, 0, 0.08);
-
-  cursor: pointer;
-
-  transition: all 0.2s ease;
-}
-
-.session-card:hover {
-  transform: translateY(-2px);
-
-  border-color: rgba(25, 118, 210, 0.4);
-}
-
-.session-selected {
-  border: 2px solid rgb(25, 118, 210);
-
-  background: rgba(25, 118, 210, 0.04);
-}
-
-.session-disabled {
-  opacity: 0.7;
-
-  cursor: not-allowed;
-}
-
-.preview-grid {
-  display: grid;
-
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-
-  gap: 16px;
-}
-
-.preview-item {
-  position: relative;
-}
-
-.preview-delete {
-  position: absolute;
-
-  top: 8px;
-
-  right: 8px;
-}
-
-.video-preview {
-  width: 100%;
-
-  max-width: 700px;
-
-  border-radius: 16px;
-
-  background: black;
-}
-
-@media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-
-    align-items: stretch;
-  }
-
-  .page-header .v-btn {
-    width: 100%;
-  }
-
-  .session-card .d-flex {
-    flex-direction: column;
-
-    align-items: stretch !important;
-  }
-
-  .session-card .text-right {
-    text-align: left !important;
-
-    margin-top: 12px;
-  }
-}
-
-@media (max-width: 600px) {
-  .page-header h1 {
-    font-size: 28px !important;
-
-    line-height: 1.2;
-  }
-
-  .page-header p {
-    font-size: 13px;
-  }
-
-  .session-card .v-card-text {
-    padding: 16px !important;
-  }
-
-  .session-card .text-h6 {
-    font-size: 18px !important;
-  }
-
-  .preview-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .video-preview {
-    border-radius: 12px;
-  }
-}
-</style>

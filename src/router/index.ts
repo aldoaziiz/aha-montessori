@@ -206,6 +206,16 @@ const routes: RouteRecordRaw[] = [
     component: Report,
     meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin', 'therapist', 'guardian'] },
   },
+  {
+    path: '/report/billing',
+    name: 'report-billing',
+    component: () => import('@/components/Report/BillingReport.vue'),
+    meta: {
+      layout: 'app',
+      requiresAuth: true,
+      allowedRoles: ['admin'],
+    },
+  },
 
   // help support
   {

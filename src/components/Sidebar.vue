@@ -120,17 +120,25 @@
       </v-list-item>
 
       <!-- report -->
-      <v-list-item
-        v-if="authStore.isAdmin"
-        @click="setActiveMenu('Report')"
-        :active="activeMenu === 'Report'"
-        to="/report"
-      >
-        <template v-slot:prepend>
-          <v-icon>mdi-chart-bar</v-icon>
+      <v-list-group v-if="authStore.isAdmin" value="report">
+        <template #activator="{ props }">
+          <v-list-item v-bind="props" title="Report" prepend-icon="mdi-chart-bar" />
         </template>
-        <v-list-item-title>Report</v-list-item-title>
-      </v-list-item>
+
+        <!-- <v-list-item
+          title="Overview"
+          to="/report"
+          :active="activeMenu === 'Report'"
+          @click="setActiveMenu('Report')"
+        /> -->
+
+        <v-list-item
+          title="Billing"
+          to="/report/billing"
+          :active="activeMenu === 'BillingReport'"
+          @click="setActiveMenu('BillingReport')"
+        ></v-list-item>
+      </v-list-group>
     </v-list>
 
     <v-divider class="my-4"></v-divider>

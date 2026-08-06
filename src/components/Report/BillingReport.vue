@@ -82,13 +82,27 @@
 
     <!-- SUMMARY -->
 
-    <v-row class="mb-2">
+    <v-row class="mb-6">
       <v-col v-for="item in summaryCards" :key="item.title" cols="12" sm="6" lg="3">
-        <v-card rounded="lg" elevation="1" height="100%" :loading="loading">
+        <v-card
+          rounded="lg"
+          elevation="1"
+          height="100%"
+          :loading="loading"
+          :style="{
+            backgroundColor: item.color,
+            color: item.textColor,
+          }"
+        >
           <v-card-text>
             <div class="d-flex justify-space-between align-start">
               <div>
-                <div class="text-body-2 text-medium-emphasis">
+                <div
+                  class="text-body-2 summary-card-title"
+                  :style="{
+                    color: item.textColor,
+                  }"
+                >
                   {{ item.title }}
                 </div>
 
@@ -97,7 +111,12 @@
                 </div>
               </div>
 
-              <v-avatar color="primary" variant="tonal">
+              <v-avatar
+                class="summary-card-icon"
+                :style="{
+                  color: item.textColor,
+                }"
+              >
                 <v-icon>
                   {{ item.icon }}
                 </v-icon>
@@ -409,21 +428,29 @@ const summaryCards = computed(() => [
     title: 'Total Billing',
     value: formatCurrency(summary.totalBilling),
     icon: 'mdi-receipt-text-outline',
+    color: '#E6611D',
+    textColor: '#FFFFFF',
   },
   {
     title: 'Total Paid',
     value: formatCurrency(summary.totalPaid),
     icon: 'mdi-cash-check',
+    color: '#64AF64',
+    textColor: '#FFFFFF',
   },
   {
     title: 'Total Unpaid',
     value: formatCurrency(summary.totalUnpaid),
     icon: 'mdi-cash-remove',
+    color: '#FFD039',
+    textColor: '#2D2D2D',
   },
   {
     title: 'Total Registrations',
     value: summary.totalRegistrations,
     icon: 'mdi-account-group-outline',
+    color: '#6EC6CD',
+    textColor: '#17383A',
   },
 ])
 
@@ -680,5 +707,13 @@ onMounted(async () => {
 
 .billing-table {
   overflow-x: auto;
+}
+
+.summary-card-title {
+  opacity: 0.85;
+}
+
+.summary-card-icon {
+  background-color: rgba(255, 255, 255, 0.25);
 }
 </style>

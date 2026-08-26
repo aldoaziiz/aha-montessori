@@ -89,7 +89,7 @@
 
           <v-card-text>
             <v-row>
-              <v-col cols="12" md="4">
+              <v-col cols="12" md="3">
                 <v-text-field
                   :model-value="activityInfo.date"
                   label="Activity Date"
@@ -98,7 +98,16 @@
                 />
               </v-col>
 
-              <v-col cols="12" md="4">
+              <v-col cols="12" md="3">
+                <v-text-field
+                  :model-value="activityInfo.contentType"
+                  label="Content Type"
+                  readonly
+                  variant="outlined"
+                />
+              </v-col>
+
+              <v-col cols="12" md="3">
                 <v-text-field
                   :model-value="activityInfo.programCategory"
                   label="Program Category"
@@ -107,7 +116,7 @@
                 />
               </v-col>
 
-              <v-col cols="12" md="4">
+              <v-col cols="12" md="3">
                 <v-text-field
                   :model-value="activityInfo.session"
                   label="School Session"
@@ -137,13 +146,22 @@
               :items="children"
               item-title="name"
               item-value="id"
+              item-props
               label="Select Children"
               variant="outlined"
               density="comfortable"
               multiple
               chips
               closable-chips
-            />
+            >
+              <template #item="{ props, item }">
+                <v-list-item v-bind="props">
+                  <template #subtitle>
+                    <span v-if="item.props?.subtitle">{{ item.props.subtitle }}</span>
+                  </template>
+                </v-list-item>
+              </template>
+            </v-autocomplete>
           </v-card-text>
         </v-card>
 
@@ -341,6 +359,8 @@ const form = reactive({
 const activityInfo = reactive({
   date: '',
 
+  contentType: '',
+
   programCategory: '',
 
   session: '',
@@ -474,6 +494,8 @@ async function fetchActivity() {
 
     activityInfo.date = activity.therapy_date ?? '-'
 
+    activityInfo.contentType = activity.content_type?.name ?? '-'
+
     activityInfo.programCategory = activity.program_category?.name ?? '-'
 
     activityInfo.session = session
@@ -522,13 +544,21 @@ async function fetchChildren(programCategoryId, currentChildren = []) {
     // Mencegah anak lama hilang kalau statusnya berubah menjadi inactive.
     const mergedChildren = [...activeChildren, ...currentChildren]
 
-    children.value = Array.from(
-      new Map(mergedChildren.map((child) => [child.id, child])).values(),
-    ).sort((a, b) => a.name.localeCompare(b.name))
+    children.value = Array.from(new Map(mergedChildren.map((child) => [child.id, child])).values())
+      .map((child) => ({
+        ...child,
+        title: child.name,
+        subtitle: child.nickname,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name))
   } catch (error) {
     console.error(error)
 
-    children.value = currentChildren
+    children.value = currentChildren.map((child) => ({
+      ...child,
+      title: child.name,
+      subtitle: child.nickname,
+    }))
 
     showError('Failed to load children.')
   }
@@ -701,3 +731,14 @@ onMounted(() => {
   fetchActivity()
 })
 </script>
+
+<style scoped>
+.existing-video {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  background-color: #000;
+}
+</style>

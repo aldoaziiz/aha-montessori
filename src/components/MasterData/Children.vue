@@ -243,6 +243,37 @@
           </v-row>
         </div>
 
+        <!-- HEALTH INFORMATION -->
+        <div class="mb-6">
+          <div class="text-subtitle-1 font-weight-bold mb-4">-- Health Information --</div>
+
+          <v-row>
+            <v-col cols="12" md="6">
+              <div class="detail-label">Allergy History</div>
+
+              <div class="detail-value">
+                {{ selectedChild.allergy_history || '-' }}
+              </div>
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <div class="detail-label">Special Condition</div>
+
+              <div class="detail-value">
+                {{ selectedChild.special_condition || '-' }}
+              </div>
+            </v-col>
+
+            <v-col cols="12">
+              <div class="detail-label">Under Therapy</div>
+
+              <div class="detail-value">
+                {{ selectedChild.under_therapy || '-' }}
+              </div>
+            </v-col>
+          </v-row>
+        </div>
+
         <!-- EDUCATION -->
         <div>
           <div class="text-subtitle-1 font-weight-bold mb-4">-- Education --</div>

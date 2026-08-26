@@ -41,6 +41,17 @@
         />
 
         <v-autocomplete
+          v-model="form.activity_content_type_id"
+          :items="activityContentTypes"
+          item-title="name"
+          item-value="id"
+          label="Content Type"
+          variant="outlined"
+          density="comfortable"
+          class="mb-5"
+        />
+
+        <v-autocomplete
           v-model="form.program_category_id"
           :items="programCategories"
           item-title="name"
@@ -81,13 +92,15 @@
               :items="children"
               item-title="name"
               item-value="id"
+              item-props
+              subtitle="name"
               label="Select Children"
               variant="outlined"
               density="comfortable"
               multiple
               chips
               closable-chips
-            />
+            ></v-autocomplete>
           </v-card-text>
         </v-card>
 
@@ -204,6 +217,7 @@ const uploading = ref(false) // Upload activity
 const uploadProgress = ref(0)
 
 const programCategories = ref([])
+const activityContentTypes = ref([])
 
 const children = ref([])
 const schoolSessions = ref([])
@@ -235,6 +249,8 @@ const getVideoFile = (value) => {
 }
 
 const form = reactive({
+  activity_content_type_id: null,
+
   therapy_date: new Date().toISOString().slice(0, 10),
 
   program_category_id: null,
@@ -365,6 +381,15 @@ async function fetchProgramCategories() {
     const response = await api.get('/master-data')
 
     programCategories.value = response.data.program_categories ?? []
+    activityContentTypes.value = response.data.activity_content_types ?? []
+
+    if (!form.activity_content_type_id) {
+      const defaultContentType =
+        activityContentTypes.value.find((item) => item.name === 'Activity') ??
+        activityContentTypes.value[0]
+
+      form.activity_content_type_id = defaultContentType?.id ?? null
+    }
   } catch (error) {
     console.error(error)
 
@@ -400,7 +425,11 @@ async function fetchChildren(programCategoryId) {
       },
     })
 
-    children.value = response.data.data ?? []
+    children.value = (response.data.data ?? []).map((child) => ({
+      ...child,
+      title: child.name,
+      subtitle: child.nickname,
+    }))
   } catch (error) {
     console.error(error)
 
@@ -447,6 +476,10 @@ async function submit() {
     return showError('Please select a program category.')
   }
 
+  if (!form.activity_content_type_id) {
+    return showError('Please select a content type.')
+  }
+
   if (!selectedSession.value) {
     return showError('Please select a school session.')
   }
@@ -477,6 +510,8 @@ async function submit() {
     uploading.value = true
 
     const payload = new FormData()
+
+    payload.append('activity_content_type_id', form.activity_content_type_id)
 
     payload.append('program_category_id', form.program_category_id)
 

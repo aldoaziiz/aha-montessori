@@ -1053,8 +1053,8 @@ const applyAvailabilityFilter = async () => {
 
   const diff = (end - start) / (1000 * 60 * 60 * 24)
 
-  if (diff > 6) {
-    snackbarText.value = 'Maximum range is 7 days'
+  if (diff > 30) {
+    snackbarText.value = 'Maximum range is 31 days'
 
     snackbarColor.value = 'error'
 

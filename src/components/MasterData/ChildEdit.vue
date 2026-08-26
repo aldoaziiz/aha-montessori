@@ -128,6 +128,36 @@
           <v-col cols="12">
             <v-textarea v-model="form.address" label="Address" variant="outlined" rows="3" />
           </v-col>
+
+          <!-- ALLERGY HISTORY -->
+          <v-col cols="12">
+            <v-textarea
+              v-model="form.allergy_history"
+              label="Allergy History"
+              variant="outlined"
+              rows="3"
+            />
+          </v-col>
+
+          <!-- SPECIAL CONDITION -->
+          <v-col cols="12">
+            <v-textarea
+              v-model="form.special_condition"
+              label="Special Condition"
+              variant="outlined"
+              rows="3"
+            />
+          </v-col>
+
+          <!-- UNDER THERAPY -->
+          <v-col cols="12">
+            <v-textarea
+              v-model="form.under_therapy"
+              label="Under Therapy"
+              variant="outlined"
+              rows="3"
+            />
+          </v-col>
         </v-row>
 
         <!-- GUARDIANS -->
@@ -280,6 +310,9 @@ const form = ref({
   birth_date: '',
   gender: '',
   address: '',
+  allergy_history: '',
+  special_condition: '',
+  under_therapy: '',
   birthplace_id: null,
   hometown_id: null,
   school_id: null,
@@ -347,6 +380,12 @@ const fetchChild = async () => {
       gender: res.data.gender || '',
 
       address: res.data.address || '',
+
+      allergy_history: res.data.allergy_history || '',
+
+      special_condition: res.data.special_condition || '',
+
+      under_therapy: res.data.under_therapy || '',
 
       birthplace_id: res.data.birthplace_id ? Number(res.data.birthplace_id) : null,
 

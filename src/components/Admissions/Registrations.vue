@@ -179,6 +179,33 @@
                   :readonly="childMode === 'existing'"
                 />
               </v-col>
+
+              <v-col cols="12">
+                <v-textarea
+                  v-model="form.child.allergy_history"
+                  label="Allergy History"
+                  rows="2"
+                  :readonly="childMode === 'existing'"
+                />
+              </v-col>
+
+              <v-col cols="12">
+                <v-textarea
+                  v-model="form.child.special_condition"
+                  label="Special Condition"
+                  rows="2"
+                  :readonly="childMode === 'existing'"
+                />
+              </v-col>
+
+              <v-col cols="12">
+                <v-textarea
+                  v-model="form.child.under_therapy"
+                  label="Under Therapy"
+                  rows="2"
+                  :readonly="childMode === 'existing'"
+                />
+              </v-col>
             </v-row>
           </v-card-text>
         </v-card>
@@ -463,6 +490,9 @@ const form = ref({
     hometown_id: null,
     gender: '',
     address: '',
+    allergy_history: '',
+    special_condition: '',
+    under_therapy: '',
     school_id: null,
     school_class_id: null,
     school_education_id: null,
@@ -557,6 +587,9 @@ watch(selectedChild, (val) => {
     birth_date: c.birth_date,
     gender: c.gender,
     address: c.address,
+    allergy_history: c.allergy_history ?? '',
+    special_condition: c.special_condition ?? '',
+    under_therapy: c.under_therapy ?? '',
     birthplace_id: c.birthplace_id ?? null,
     hometown_id: c.hometown_id ?? null,
     school_id: c.school_id ?? null,
@@ -585,6 +618,9 @@ watch(childMode, async (mode) => {
       hometown_id: null,
       gender: '',
       address: '',
+      allergy_history: '',
+      special_condition: '',
+      under_therapy: '',
       school_id: null,
       school_class_id: null,
       school_education_id: null,

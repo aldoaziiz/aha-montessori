@@ -56,8 +56,14 @@
 
                 <!-- CATEGORY -->
 
-                <div class="text-h6 font-weight-bold mt-2">
-                  {{ activity.program_category?.name }}
+                <div class="d-flex align-center flex-wrap ga-2 mt-2">
+                  <div class="text-h6 font-weight-bold">
+                    {{ activity.program_category?.name }}
+                  </div>
+
+                  <v-chip v-if="activity.content_type?.name" size="x-small" variant="tonal">
+                    {{ activity.content_type.name }}
+                  </v-chip>
                 </div>
 
                 <div class="text-caption text-medium-emphasis mt-1">
@@ -130,6 +136,22 @@
           >
             <v-carousel-item v-for="photo in getPhotos(activity)" :key="photo.id">
               <v-img :src="storageUrl(photo.file_path)" height="520" cover />
+
+              <div class="photo-actions">
+                <v-tooltip text="Download photo" location="top">
+                  <template #activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      icon="mdi-download"
+                      variant="flat"
+                      color="white"
+                      :loading="downloadingPhotoId === photo.id"
+                      aria-label="Download photo"
+                      @click.stop="downloadPhoto(photo, activity.id)"
+                    />
+                  </template>
+                </v-tooltip>
+              </div>
             </v-carousel-item>
           </v-carousel>
 
@@ -257,6 +279,7 @@ const activityToDelete = ref(null)
 const snackbar = ref(false)
 const snackbarText = ref('')
 const snackbarColor = ref('success')
+const downloadingPhotoId = ref(null)
 
 const expandedDescriptions = ref([])
 const expandedChildren = ref([])
@@ -553,6 +576,38 @@ function storageUrl(path) {
   return `${import.meta.env.VITE_STORAGE_URL}/${path}`
 }
 
+async function downloadPhoto(photo, activityId) {
+  if (!photo?.id) {
+    return
+  }
+
+  downloadingPhotoId.value = photo.id
+
+  try {
+    const response = await api.get(`/activity-media/${photo.id}/download`, {
+      responseType: 'blob',
+    })
+
+    const blobUrl = URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    const extension = photo.file_path.split('.').pop()?.split('?')[0] || 'jpg'
+
+    link.href = blobUrl
+    link.download = `activity-${activityId}-photo-${photo.id}.${extension}`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(blobUrl)
+  } catch (error) {
+    console.error(error)
+    snackbar.value = true
+    snackbarColor.value = 'error'
+    snackbarText.value = 'Failed to download photo.'
+  } finally {
+    downloadingPhotoId.value = null
+  }
+}
+
 // ======================
 // ACTION
 // ======================
@@ -643,6 +698,13 @@ onMounted(() => {
 
 .activity-carousel {
   background: #f5f5f5;
+}
+
+.photo-actions {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1;
 }
 
 .activity-carousel :deep(.v-img__img) {

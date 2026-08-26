@@ -213,6 +213,27 @@
             </div>
           </v-col>
 
+          <v-col cols="12" md="6">
+            <div class="detail-label">Allergy History</div>
+            <div class="detail-value">
+              {{ selectedRegistration.child?.allergy_history || '-' }}
+            </div>
+          </v-col>
+
+          <v-col cols="12" md="6">
+            <div class="detail-label">Special Condition</div>
+            <div class="detail-value">
+              {{ selectedRegistration.child?.special_condition || '-' }}
+            </div>
+          </v-col>
+
+          <v-col cols="12">
+            <div class="detail-label">Under Therapy</div>
+            <div class="detail-value">
+              {{ selectedRegistration.child?.under_therapy || '-' }}
+            </div>
+          </v-col>
+
           <v-col cols="12">
             <div class="detail-label mb-3">Guardians</div>
 

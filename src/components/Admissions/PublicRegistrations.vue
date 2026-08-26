@@ -131,6 +131,30 @@
               <v-col cols="12">
                 <v-textarea v-model="form.child.address" label="Address" rows="2" />
               </v-col>
+
+              <v-col cols="12">
+                <v-textarea
+                  v-model="form.child.allergy_history"
+                  label="Allergy History"
+                  rows="2"
+                />
+              </v-col>
+
+              <v-col cols="12">
+                <v-textarea
+                  v-model="form.child.special_condition"
+                  label="Special Condition"
+                  rows="2"
+                />
+              </v-col>
+
+              <v-col cols="12">
+                <v-textarea
+                  v-model="form.child.under_therapy"
+                  label="Under Therapy"
+                  rows="2"
+                />
+              </v-col>
             </v-row>
           </v-card-text>
         </v-card>
@@ -344,6 +368,9 @@ const form = ref({
     hometown_id: null,
     gender: '',
     address: '',
+    allergy_history: '',
+    special_condition: '',
+    under_therapy: '',
     school_id: null,
     school_class_id: null,
     school_education_id: null,

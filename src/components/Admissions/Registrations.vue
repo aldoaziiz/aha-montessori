@@ -635,7 +635,11 @@ watch(childMode, async (mode) => {
 
   if (mode === 'existing' && !childrenOptions.value.length) {
     try {
-      const res = await api.get('/children')
+      const res = await api.get('/children', {
+        params: {
+          per_page: 1000,
+        },
+      })
 
       childrenOptions.value = res.data.data
     } catch (err) {
@@ -699,7 +703,11 @@ watch(guardianMode, async (mode) => {
 
   if (mode === 'existing' && !guardiansOptions.value.length) {
     try {
-      const res = await api.get('/guardians')
+      const res = await api.get('/guardians', {
+        params: {
+          per_page: 1000,
+        },
+      })
 
       guardiansOptions.value = res.data.data
     } catch (err) {

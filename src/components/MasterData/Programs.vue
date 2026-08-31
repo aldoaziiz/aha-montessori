@@ -36,7 +36,7 @@
                     :items="clinics"
                     item-title="name"
                     item-value="id"
-                    label="Filter Clinic"
+                    label="Filter School"
                     variant="outlined"
                     hide-details
                     density="compact"
@@ -148,7 +148,7 @@
               <div class="detail-value">{{ selectedProgram.name || '-' }}</div>
             </v-col>
             <v-col cols="12" md="6">
-              <div class="detail-label">Clinic</div>
+              <div class="detail-label">School</div>
               <div class="detail-value">{{ selectedProgram.clinic?.name || '-' }}</div>
             </v-col>
             <v-col cols="12" md="6">
@@ -249,7 +249,7 @@ const headers = [
   { title: 'Session', key: 'session_count' },
   { title: 'Payer', key: 'payer' },
   { title: 'Price', key: 'price' },
-  { title: 'Clinic', key: 'clinic' },
+  { title: 'School', key: 'clinic' },
   { title: 'Category', key: 'category' },
   { title: 'Status', key: 'status' },
   { title: '', key: 'actions', sortable: false, align: 'center' as const },

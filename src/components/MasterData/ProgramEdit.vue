@@ -35,7 +35,7 @@
                 :items="clinics"
                 item-title="name"
                 item-value="id"
-                label="Clinic"
+                label="School"
                 variant="outlined"
                 :rules="[rules.required]"
               />

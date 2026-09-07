@@ -45,6 +45,11 @@
                 </div>
               </template>
 
+              <!-- PROGRAM CATEGORY -->
+              <template v-slot:item.program_category="{ item }">
+                {{ getProgramCategoryNames(item) }}
+              </template>
+
               <!-- BIRTH DATE -->
               <template v-slot:item.child.birth_date="{ item }">
                 {{ formatDate(item.child?.birth_date) }}
@@ -621,6 +626,12 @@ const headers = [
   },
 
   {
+    title: 'Program Category',
+    key: 'program_category',
+    sortable: false,
+  },
+
+  {
     title: 'Payment Status',
     key: 'payment_status.id',
   },
@@ -632,6 +643,14 @@ const headers = [
     align: 'center',
   },
 ]
+
+const getProgramCategoryNames = (registration) => {
+  const names = (registration.programs ?? [])
+    .map((program) => program.program_category?.name ?? program.category?.name)
+    .filter(Boolean)
+
+  return [...new Set(names)].join(', ') || '-'
+}
 
 // ======================
 // FETCH DATA

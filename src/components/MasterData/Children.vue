@@ -20,14 +20,42 @@
           <v-card flat>
             <!-- SEARCH -->
             <template v-slot:text>
-              <v-text-field
-                v-model="search"
-                label="Search Name"
-                prepend-inner-icon="mdi-magnify"
-                variant="outlined"
-                hide-details
-                single-line
-              />
+              <v-row dense>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="search"
+                    label="Search Name"
+                    prepend-inner-icon="mdi-magnify"
+                    variant="outlined"
+                    hide-details
+                    single-line
+                  />
+                </v-col>
+
+                <v-col cols="12" md="3">
+                  <v-autocomplete
+                    v-model="selectedProgramCategory"
+                    :items="programCategories"
+                    item-title="name"
+                    item-value="id"
+                    label="Program Category"
+                    variant="outlined"
+                    hide-details
+                    clearable
+                  />
+                </v-col>
+
+                <v-col cols="12" md="3">
+                  <v-select
+                    v-model="selectedGender"
+                    :items="genderOptions"
+                    label="Gender"
+                    variant="outlined"
+                    hide-details
+                    clearable
+                  />
+                </v-col>
+              </v-row>
             </template>
 
             <!-- TABLE -->
@@ -63,6 +91,11 @@
                 <v-chip size="small" :color="Number(item.status_id) === 1 ? 'green' : 'grey'">
                   {{ item.status?.name || '-' }}
                 </v-chip>
+              </template>
+
+              <!-- PROGRAM CATEGORY -->
+              <template v-slot:item.program_category="{ item }">
+                {{ item.program_category?.name || '-' }}
               </template>
 
               <!-- ACTIONS -->
@@ -170,6 +203,14 @@
 
               <div class="detail-value">
                 {{ selectedChild.gender || '-' }}
+              </div>
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <div class="detail-label">Program Category</div>
+
+              <div class="detail-value">
+                {{ selectedChild.program_category?.name || '-' }}
               </div>
             </v-col>
 
@@ -331,6 +372,9 @@ const pageTitle = 'Children'
 const pageSubtitle = 'Manage and view information about children'
 const children = ref([])
 const search = ref('')
+const selectedProgramCategory = ref(null)
+const selectedGender = ref(null)
+const programCategories = ref([])
 const loading = ref(false)
 const page = ref(1)
 const itemsPerPage = ref(10)
@@ -343,6 +387,8 @@ const guardianRoles = ref([])
 const statusLoadingId = ref(null)
 const statusLoading = ref(false)
 const initialized = ref(false)
+
+const genderOptions = ['Male', 'Female']
 
 const openDetails = async (child) => {
   detailsDialog.value = true
@@ -379,6 +425,7 @@ const openDetails = async (child) => {
 const headers = [
   { title: 'ID No.', key: 'id_number' },
   { title: 'Name', key: 'name' },
+  { title: 'Program Category', key: 'program_category', sortable: false },
   { title: 'Birth Date', key: 'birth_date' },
   { title: 'Gender', key: 'gender' },
   { title: 'Enrollment Date', key: 'created_at' },
@@ -395,6 +442,8 @@ const fetchData = async () => {
         page: page.value,
         per_page: itemsPerPage.value,
         search: search.value,
+        program_category_id: selectedProgramCategory.value ?? undefined,
+        gender: selectedGender.value ?? undefined,
         sort_by: sortBy.value[0]?.key,
         sort_order: sortBy.value[0]?.order,
       },
@@ -413,6 +462,16 @@ const getGuardianRoleName = (roleId) => {
   const role = guardianRoles.value.find((item) => item.id === roleId)
 
   return role?.name || '-'
+}
+
+const fetchMasterData = async () => {
+  try {
+    const res = await api.get('/master-data')
+
+    programCategories.value = res.data.program_categories ?? []
+  } catch (err) {
+    console.error(err)
+  }
 }
 
 const formatDate = (date) => {
@@ -515,6 +574,15 @@ const onOptionsChange = (options) => {
 
 watch(search, () => {
   debouncedFetch()
+})
+
+watch([selectedProgramCategory, selectedGender], () => {
+  page.value = 1
+  fetchData()
+})
+
+onMounted(() => {
+  fetchMasterData()
 })
 
 onUnmounted(() => {

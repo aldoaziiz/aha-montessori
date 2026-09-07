@@ -408,6 +408,14 @@
             <v-btn @click="sessionDialog = true" color="primary" prepend-icon="mdi-plus">
               Add Session
             </v-btn>
+
+            <v-btn
+              color="warning"
+              prepend-icon="mdi-playlist-plus"
+              @click="openMultipleSessionDialog"
+            >
+              Add Multiple Session
+            </v-btn>
           </v-row>
           <v-row class="mb-4">
             <v-col cols="12" md="3">
@@ -445,6 +453,11 @@
           <!-- DAY -->
           <template #item.day="{ item }">
             {{ formatDay(item.therapy_date) }}
+          </template>
+
+          <!-- DATE -->
+          <template #item.therapy_date="{ item }">
+            {{ formatLongDate(item.therapy_date) }}
           </template>
 
           <!-- START -->
@@ -595,6 +608,178 @@
     </v-card>
   </v-dialog>
 
+  <v-dialog v-model="multipleSessionDialog" max-width="1100">
+    <v-card>
+      <v-card-title>Add Multiple Session</v-card-title>
+
+      <v-card-text class="pt-4">
+        <v-alert type="info" variant="tonal" density="comfortable" class="mb-4">
+          Add one or more school sessions for this child. Date and session time are required.
+        </v-alert>
+
+        <div class="multiple-session-wrapper">
+          <v-table density="comfortable" class="multiple-session-table">
+            <thead>
+              <tr>
+                <th style="width: 24%">Date</th>
+
+                <th style="width: 34%">Session Time</th>
+
+                <th>Notes</th>
+
+                <th style="width: 72px" class="text-center">Action</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr v-for="(row, index) in multipleSessionRows" :key="row.key">
+                <td>
+                  <v-text-field
+                    v-model="row.therapy_date"
+                    type="date"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                  />
+                </td>
+
+                <td>
+                  <v-select
+                    v-model="row.session_time_id"
+                    :items="programCategorySessionTimes"
+                    item-title="label"
+                    item-value="id"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                  />
+                </td>
+
+                <td>
+                  <v-textarea
+                    v-model="row.notes"
+                    variant="outlined"
+                    density="compact"
+                    rows="1"
+                    auto-grow
+                    hide-details
+                  />
+                </td>
+
+                <td class="text-center">
+                  <v-btn
+                    icon="mdi-delete"
+                    variant="text"
+                    color="error"
+                    size="small"
+                    :disabled="multipleSessionRows.length === 1"
+                    @click="removeMultipleSessionRow(index)"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+        </div>
+
+        <v-btn
+          class="mt-4"
+          variant="tonal"
+          color="primary"
+          prepend-icon="mdi-plus"
+          @click="addMultipleSessionRow"
+        >
+          Add Row
+        </v-btn>
+
+        <div v-if="hasMultipleSessionValidationResult" class="mt-4">
+          <v-alert
+            :type="multipleSessionValidationPassed ? 'success' : 'warning'"
+            variant="tonal"
+            density="comfortable"
+          >
+            {{ multipleSessionValidation.message }}
+          </v-alert>
+
+          <v-table
+            v-if="multipleSessionValidation.conflicts.length"
+            density="compact"
+            class="mt-3 validation-result-table"
+          >
+            <thead>
+              <tr>
+                <th>Row</th>
+
+                <th>Date</th>
+
+                <th>Session</th>
+
+                <th>Issue</th>
+
+                <th>Capacity</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr
+                v-for="conflict in multipleSessionValidation.conflicts"
+                :key="`${conflict.row}-${conflict.type}`"
+              >
+                <td>{{ conflict.row }}</td>
+
+                <td>{{ formatLongDate(conflict.therapy_date) }}</td>
+
+                <td>
+                  {{ conflict.session_name }}: {{ conflict.start_time }}-{{ conflict.end_time }}
+                </td>
+
+                <td>{{ conflict.message }}</td>
+
+                <td>
+                  <span v-if="conflict.capacity !== null && conflict.capacity !== undefined">
+                    {{ conflict.occupied }} / {{ conflict.capacity }}
+                  </span>
+
+                  <span v-else>-</span>
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+        </div>
+      </v-card-text>
+
+      <v-card-actions>
+        <v-spacer />
+
+        <v-btn
+          variant="text"
+          :disabled="savingMultipleSessions"
+          @click="closeMultipleSessionDialog"
+        >
+          Cancel
+        </v-btn>
+
+        <v-btn
+          color="primary"
+          variant="tonal"
+          :loading="validatingMultipleSessions"
+          :disabled="savingMultipleSessions"
+          @click="validateMultipleSessions"
+        >
+          Validate Sessions
+        </v-btn>
+
+        <v-btn
+          color="primary"
+          :loading="savingMultipleSessions"
+          :disabled="!multipleSessionValidationPassed || validatingMultipleSessions"
+          @click="saveMultipleSessions"
+        >
+          Save Sessions
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+
   <v-dialog v-model="conflictDialog" max-width="700">
     <v-card rounded="lg">
       <v-card-title class="text-h6">Session Slot Unavailable</v-card-title>
@@ -666,6 +851,7 @@ const deleting = ref(false)
 const availabilityDate = ref(new Date())
 const availabilityLoading = ref(false)
 const sessionDialog = ref(false)
+const multipleSessionDialog = ref(false)
 const editingSessionId = ref(null)
 const conflictDialog = ref(false)
 const availabilityGrid = ref([])
@@ -673,6 +859,8 @@ const conflictSchedules = ref([])
 const therapySessionStatuses = ref([])
 const programCategorySessionTimes = ref([])
 const updatingAttendance = ref([])
+const validatingMultipleSessions = ref(false)
+const savingMultipleSessions = ref(false)
 
 const sessionFilters = ref({
   day: null,
@@ -707,6 +895,39 @@ const sessionForm = ref({
   notes: '',
 })
 
+const createMultipleSessionRow = () => ({
+  key: `${Date.now()}-${Math.random()}`,
+  therapy_date: '',
+  session_time_id: null,
+  notes: '',
+})
+
+const multipleSessionRows = ref([createMultipleSessionRow()])
+
+const multipleSessionValidation = ref({
+  status: 'idle',
+  message: '',
+  conflicts: [],
+})
+
+const hasMultipleSessionValidationResult = computed(() => {
+  return multipleSessionValidation.value.status !== 'idle'
+})
+
+const multipleSessionValidationPassed = computed(() => {
+  return multipleSessionValidation.value.status === 'passed'
+})
+
+watch(
+  multipleSessionRows,
+  () => {
+    if (multipleSessionValidation.value.status !== 'idle') {
+      resetMultipleSessionValidation()
+    }
+  },
+  { deep: true },
+)
+
 function isUpdatingAttendance(sessionId) {
   return updatingAttendance.value.includes(sessionId)
 }
@@ -728,12 +949,15 @@ const hasChild = (list, row) => {
 }
 
 const selectedSessionTime = computed(() => {
-  return (
-    programCategorySessionTimes.value.find(
-      (item) => item.id === sessionForm.value.session_time_id,
-    ) ?? null
-  )
+  return getSessionTimeById(sessionForm.value.session_time_id)
 })
+
+const getSessionTimeById = (sessionTimeId) => {
+  return (
+    programCategorySessionTimes.value.find((item) => String(item.id) === String(sessionTimeId)) ??
+    null
+  )
+}
 
 const programCategoryId = computed(() => {
   return registration.value?.programs?.[0]?.program_category?.id ?? null
@@ -776,6 +1000,63 @@ const closeSessionDialog = () => {
     session_time_id: null,
     notes: '',
   }
+}
+
+const resetMultipleSessionRows = () => {
+  multipleSessionRows.value = [createMultipleSessionRow()]
+}
+
+const resetMultipleSessionValidation = () => {
+  multipleSessionValidation.value = {
+    status: 'idle',
+    message: '',
+    conflicts: [],
+  }
+}
+
+const buildMultipleSessionPayload = () => ({
+  registration_id: route.params.id,
+  sessions: multipleSessionRows.value.map((row) => ({
+    therapy_date: row.therapy_date,
+    session_time_id: row.session_time_id,
+    notes: row.notes,
+  })),
+})
+
+const getInvalidMultipleSessionRowIndex = () => {
+  return multipleSessionRows.value.findIndex(
+    (row) => !row.therapy_date || !row.session_time_id || !getSessionTimeById(row.session_time_id),
+  )
+}
+
+const openMultipleSessionDialog = () => {
+  resetMultipleSessionRows()
+
+  resetMultipleSessionValidation()
+
+  multipleSessionDialog.value = true
+}
+
+const closeMultipleSessionDialog = () => {
+  multipleSessionDialog.value = false
+
+  resetMultipleSessionRows()
+
+  resetMultipleSessionValidation()
+}
+
+const addMultipleSessionRow = () => {
+  multipleSessionRows.value.push(createMultipleSessionRow())
+
+  resetMultipleSessionValidation()
+}
+
+const removeMultipleSessionRow = (index) => {
+  if (multipleSessionRows.value.length === 1) return
+
+  multipleSessionRows.value.splice(index, 1)
+
+  resetMultipleSessionValidation()
 }
 
 const availableTimeSlots = computed(() => {
@@ -1046,6 +1327,16 @@ const formatDate = (date) => {
   })
 }
 
+const formatLongDate = (date) => {
+  if (!date) return '-'
+
+  return new Date(date).toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
 const applyAvailabilityFilter = async () => {
   const start = new Date(availabilityFilter.value.start_date)
 
@@ -1195,6 +1486,8 @@ const saveSession = async () => {
 
       therapy_date: sessionForm.value.therapy_date,
 
+      session_time_id: sessionForm.value.session_time_id,
+
       start_time: selectedSessionTime.value.start_time,
 
       end_time: selectedSessionTime.value.end_time,
@@ -1233,6 +1526,102 @@ const saveSession = async () => {
     snackbarColor.value = 'error'
 
     snackbar.value = true
+  }
+}
+
+const validateMultipleSessions = async () => {
+  const invalidRowIndex = getInvalidMultipleSessionRowIndex()
+
+  if (invalidRowIndex !== -1) {
+    snackbarText.value = `Please complete date and session time for row ${invalidRowIndex + 1}.`
+
+    snackbarColor.value = 'warning'
+
+    snackbar.value = true
+
+    multipleSessionValidation.value = {
+      status: 'failed',
+      message: snackbarText.value,
+      conflicts: [],
+    }
+
+    return
+  }
+
+  validatingMultipleSessions.value = true
+
+  try {
+    const res = await api.post('/therapy-sessions/bulk-validate', buildMultipleSessionPayload())
+
+    multipleSessionValidation.value = {
+      status: 'passed',
+      message: res.data.message || 'All sessions are available. You can save now.',
+      conflicts: [],
+    }
+
+    snackbarText.value = multipleSessionValidation.value.message
+
+    snackbarColor.value = 'success'
+
+    snackbar.value = true
+  } catch (err) {
+    multipleSessionValidation.value = {
+      status: 'failed',
+      message: err.response?.data?.message || 'Some sessions need attention.',
+      conflicts: err.response?.data?.conflicts || [],
+    }
+
+    snackbarText.value = multipleSessionValidation.value.message
+
+    snackbarColor.value = 'warning'
+
+    snackbar.value = true
+  } finally {
+    validatingMultipleSessions.value = false
+  }
+}
+
+const saveMultipleSessions = async () => {
+  if (!multipleSessionValidationPassed.value) {
+    snackbarText.value = 'Please validate sessions first.'
+
+    snackbarColor.value = 'warning'
+
+    snackbar.value = true
+
+    return
+  }
+
+  savingMultipleSessions.value = true
+
+  try {
+    const res = await api.post('/therapy-sessions/bulk', buildMultipleSessionPayload())
+
+    snackbarText.value = res.data.message || 'Sessions created successfully'
+
+    snackbarColor.value = 'success'
+
+    snackbar.value = true
+
+    multipleSessionDialog.value = false
+    resetMultipleSessionRows()
+    resetMultipleSessionValidation()
+  } catch (err) {
+    multipleSessionValidation.value = {
+      status: 'failed',
+      message: err.response?.data?.message || 'Some sessions are no longer available.',
+      conflicts: err.response?.data?.conflicts || [],
+    }
+
+    snackbarText.value = multipleSessionValidation.value.message
+
+    snackbarColor.value = 'error'
+
+    snackbar.value = true
+  } finally {
+    savingMultipleSessions.value = false
+
+    await fetchSessions()
   }
 }
 
@@ -1458,5 +1847,19 @@ onMounted(async () => {
 .holiday-cell {
   background: #e3f2fd;
   color: #1565c0;
+}
+
+.multiple-session-wrapper {
+  overflow-x: auto;
+}
+
+.multiple-session-table {
+  min-width: 860px;
+}
+
+.multiple-session-table th,
+.multiple-session-table td {
+  padding: 10px 8px;
+  vertical-align: top;
 }
 </style>

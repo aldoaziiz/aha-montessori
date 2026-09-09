@@ -289,10 +289,31 @@
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model="form.start_date"
+                  :min="registration.session_started_at || undefined"
+                  :max="registration.session_expired_at || undefined"
                   label="Start Date"
                   type="date"
                   variant="outlined"
                   :rules="requiredRule"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="form.end_date"
+                  label="End Date"
+                  type="date"
+                  variant="outlined"
+                  :min="form.start_date || undefined"
+                  :max="registration.session_expired_at || undefined"
+                  :rules="[
+                    ...requiredRule,
+                    (v) =>
+                      !form.start_date ||
+                      v >= form.start_date ||
+                      'End Date must be on or after Start Date',
+                  ]"
+                  hint="Generate stops at End Date or when all remaining sessions are scheduled."
+                  persistent-hint
                 />
               </v-col>
               <v-divider></v-divider>
@@ -353,7 +374,7 @@
             color="primary"
             variant="elevated"
             :loading="saving"
-            :disabled="saving"
+            :disabled="saving || schedulingUnavailable"
           >
             Generate Sessions
           </v-btn>
@@ -361,43 +382,63 @@
       </v-card>
 
       <!-- SUMMARY -->
+      <div class="text-body-2 mb-3">
+        Session validity:
+        {{
+          registration.session_started_at ? formatLongDate(registration.session_started_at) : '-'
+        }}
+        to
+        {{
+          registration.session_expired_at ? formatLongDate(registration.session_expired_at) : '-'
+        }}
+      </div>
+      <v-alert v-if="sessionValidityMessage" type="warning" variant="tonal" class="mb-4">
+        {{ sessionValidityMessage }}
+      </v-alert>
       <v-row class="mb-4">
         <v-col cols="12" md="4">
-          <v-card :color="targetCardColor">
+          <v-card :color="totalCardColor" class="h-100 text-grey-darken-4">
             <v-card-text>
-              <div class="text-caption">Target Sessions</div>
+              <div class="text-caption">Total Session</div>
 
               <div class="text-h5 font-weight-bold">
-                {{ targetSessions }}
+                {{ totalSessions ?? '-' }}
               </div>
             </v-card-text>
           </v-card>
         </v-col>
 
         <v-col cols="12" md="4">
-          <v-card :color="generatedCardColor">
+          <v-card :color="usedCardColor" class="h-100 text-grey-darken-4">
             <v-card-text>
-              <div class="text-caption">Generated</div>
+              <div class="text-caption">Used Session</div>
 
               <div class="text-h5 font-weight-bold">
-                {{ generatedSessions }}
+                {{ usedSessions ?? '-' }}
               </div>
             </v-card-text>
           </v-card>
         </v-col>
 
         <v-col cols="12" md="4">
-          <v-card :color="remainingCardColor">
+          <v-card :color="remainingSessionState.color" class="h-100 text-grey-darken-4">
             <v-card-text>
-              <div class="text-caption">Remaining</div>
+              <div class="text-caption">Remaining Session</div>
 
               <div class="text-h5 font-weight-bold">
-                {{ remainingSessions }}
+                {{ remainingSessions ?? '-' }}
+              </div>
+              <div v-if="remainingSessionState.label" class="text-caption mt-1">
+                {{ remainingSessionState.label }}
               </div>
             </v-card-text>
           </v-card>
         </v-col>
       </v-row>
+
+      <v-alert v-if="sessionSummaryMessage" type="info" variant="tonal" class="mb-4">
+        {{ sessionSummaryMessage }}
+      </v-alert>
 
       <!-- SESSION HISTORY -->
       <v-card elevation="1" class="rounded-lg">
@@ -405,7 +446,12 @@
         <v-divider></v-divider>
         <v-card-text>
           <v-row class="mb-4">
-            <v-btn @click="sessionDialog = true" color="primary" prepend-icon="mdi-plus">
+            <v-btn
+              @click="sessionDialog = true"
+              :disabled="schedulingUnavailable"
+              color="primary"
+              prepend-icon="mdi-plus"
+            >
               Add Session
             </v-btn>
 
@@ -413,6 +459,7 @@
               color="warning"
               prepend-icon="mdi-playlist-plus"
               @click="openMultipleSessionDialog"
+              :disabled="schedulingUnavailable"
             >
               Add Multiple Session
             </v-btn>
@@ -577,6 +624,9 @@
       <v-card-text class="pt-4">
         <v-text-field
           v-model="sessionForm.therapy_date"
+          :min="registration.session_started_at || undefined"
+          :max="registration.session_expired_at || undefined"
+          :disabled="schedulingUnavailable"
           type="date"
           label="Date"
           variant="outlined"
@@ -585,6 +635,7 @@
 
         <v-select
           v-model="sessionForm.session_time_id"
+          :disabled="schedulingUnavailable"
           :items="programCategorySessionTimes"
           item-title="label"
           item-value="id"
@@ -601,7 +652,11 @@
 
         <v-btn variant="text" @click="closeSessionDialog">Cancel</v-btn>
 
-        <v-btn color="primary" @click="saveSession">
+        <v-btn
+          color="primary"
+          :disabled="!editingSessionId && schedulingUnavailable"
+          @click="saveSession"
+        >
           {{ editingSessionId ? 'Update Session' : 'Save Session' }}
         </v-btn>
       </v-card-actions>
@@ -636,6 +691,8 @@
                 <td>
                   <v-text-field
                     v-model="row.therapy_date"
+                    :min="registration.session_started_at || undefined"
+                    :max="registration.session_expired_at || undefined"
                     type="date"
                     variant="outlined"
                     density="compact"
@@ -771,7 +828,9 @@
         <v-btn
           color="primary"
           :loading="savingMultipleSessions"
-          :disabled="!multipleSessionValidationPassed || validatingMultipleSessions"
+          :disabled="
+            !multipleSessionValidationPassed || validatingMultipleSessions || schedulingUnavailable
+          "
           @click="saveMultipleSessions"
         >
           Save Sessions
@@ -1071,6 +1130,7 @@ const requiredRule = [(v) => !!v || 'This field is required']
 
 const form = ref({
   start_date: '',
+  end_date: '',
   notes: '',
   schedule_configs: [
     {
@@ -1145,54 +1205,67 @@ const headers = [
   },
 ]
 
-const targetSessions = computed(() => {
-  return (
-    registration.value?.programs?.reduce((total, program) => {
-      return (
-        total + Number(program.session_count || 0) * Number(program.learning_period_months || 0)
-      )
-    }, 0) || 0
-  )
+const sessionSummaryLoading = ref(false)
+const sessionSummaryError = ref(false)
+let registrationRequestId = 0
+
+const sessionSummary = computed(() => {
+  if (sessionSummaryLoading.value || sessionSummaryError.value) return null
+
+  // Older registrations need their session entitlement populated before showing totals.
+  if (registration.value?.total_session == null) return null
+
+  return registration.value?.session_summary ?? null
 })
 
-const generatedSessions = computed(() => {
-  return sessions.value.length
-})
+const totalSessions = computed(() => sessionSummary.value?.total_session ?? null)
+const usedSessions = computed(() => sessionSummary.value?.used_session ?? null)
+const remainingSessions = computed(() => sessionSummary.value?.remaining_session ?? null)
 
-const remainingSessions = computed(() => {
-  return targetSessions.value - generatedSessions.value
-})
+const schedulingUnavailable = computed(
+  () =>
+    !sessionSummary.value ||
+    !registration.value.session_started_at ||
+    !registration.value.session_expired_at ||
+    sessionSummary.value.is_session_expired,
+)
 
-const targetCardColor = computed(() => {
-  return '#64AF64'
-})
-
-const generatedCardColor = computed(() => {
-  if (generatedSessions.value > targetSessions.value) {
-    return '#E6611D'
+const sessionValidityMessage = computed(() => {
+  if (sessionSummaryLoading.value || sessionSummaryError.value) return ''
+  if (sessionSummary.value?.is_session_expired) {
+    return 'Sessions have expired. New sessions and rescheduling are no longer available. Session history is retained.'
   }
-
-  if (generatedSessions.value < targetSessions.value) {
-    return '#FFD039'
+  if (
+    registration.value?.id &&
+    (!registration.value.session_started_at || !registration.value.session_expired_at)
+  ) {
+    return 'Session validity dates have not been set. Scheduling will be available once these dates are set.'
   }
-
-  if (generatedSessions.value === targetSessions.value) {
-    return '#64AF64'
-  }
-
   return ''
 })
 
-const remainingCardColor = computed(() => {
-  if (remainingSessions.value > 0) {
-    return '#FFD039'
+const sessionSummaryMessage = computed(() => {
+  if (sessionSummaryLoading.value) return 'Loading session summary...'
+  if (sessionSummaryError.value) return 'Unable to load session summary. Please refresh the page.'
+  if (registration.value?.id && registration.value.total_session == null) {
+    return 'Session totals have not been set for this registration.'
   }
+  if (!sessionSummary.value) return 'Session summary is not available.'
+  return ''
+})
 
-  if (remainingSessions.value < 0) {
-    return '#E6611D'
+const totalCardColor = computed(() => '#F5F5F5')
+const usedCardColor = computed(() => '#E8F5E9')
+const remainingSessionState = computed(() => {
+  if (remainingSessions.value == null) return { color: '#F5F5F5', label: '' }
+  if (sessionSummary.value?.is_session_expired) return { color: '#FFEBEE', label: 'Expired' }
+  if (remainingSessions.value <= 0) {
+    return { color: '#FFEBEE', label: 'No sessions remaining' }
   }
-
-  return '#64AF64'
+  if (totalSessions.value > 0 && remainingSessions.value / totalSessions.value <= 0.2) {
+    return { color: '#FFF8E1', label: 'Running low' }
+  }
+  return { color: '#E3F2FD', label: 'Available' }
 })
 
 const fetchTherapySessionStatuses = async () => {
@@ -1216,16 +1289,24 @@ const fetchProgramCategorySessionTimes = async () => {
 // FETCH REGISTRATION
 // ======================
 
-const fetchRegistration = async () => {
+const fetchRegistration = async ({ loadSessionTimes = true } = {}) => {
+  const requestId = ++registrationRequestId
+  sessionSummaryLoading.value = true
+  sessionSummaryError.value = false
+
   try {
     const res = await api.get(`/registrations/${route.params.id}`)
+    if (requestId !== registrationRequestId) return
 
     registration.value = res.data.data
-
-    await fetchProgramCategorySessionTimes()
   } catch (err) {
+    if (requestId === registrationRequestId) sessionSummaryError.value = true
     console.error(err)
+  } finally {
+    if (requestId === registrationRequestId) sessionSummaryLoading.value = false
   }
+
+  if (loadSessionTimes) await fetchProgramCategorySessionTimes()
 }
 
 // ======================
@@ -1245,6 +1326,10 @@ const fetchSessions = async () => {
   } catch (err) {
     console.error(err)
   }
+}
+
+const refreshScheduleData = async () => {
+  await Promise.all([fetchSessions(), fetchRegistration({ loadSessionTimes: false })])
 }
 
 const fetchAvailability = async () => {
@@ -1415,9 +1500,10 @@ const saveSchedule = async () => {
 
   try {
     saving.value = true
-    await api.post('/therapy-sessions/generate', {
+    const response = await api.post('/therapy-sessions/generate', {
       registration_id: route.params.id,
       start_date: form.value.start_date,
+      end_date: form.value.end_date,
       notes: form.value.notes,
 
       schedule_configs: enabledSchedules.map((schedule) => ({
@@ -1426,20 +1512,21 @@ const saveSchedule = async () => {
       })),
     })
 
-    snackbarText.value = 'Sessions generated successfully'
+    snackbarText.value = response.data.message || 'Sessions generated successfully'
 
     snackbarColor.value = 'success'
     snackbar.value = true
 
     // reset form
     form.value.start_date = ''
+    form.value.end_date = ''
     form.value.notes = ''
     form.value.schedule_configs.forEach((schedule) => {
       schedule.enabled = false
       schedule.session_time_id = null
     })
 
-    await fetchSessions()
+    await refreshScheduleData()
   } catch (err) {
     // ======================
     // CONFLICTS
@@ -1519,7 +1606,7 @@ const saveSession = async () => {
     editingSessionId.value = null
     sessionDialog.value = false
 
-    await fetchSessions()
+    await refreshScheduleData()
   } catch (err) {
     snackbarText.value = err.response?.data?.message || 'Failed to create session'
 
@@ -1621,7 +1708,7 @@ const saveMultipleSessions = async () => {
   } finally {
     savingMultipleSessions.value = false
 
-    await fetchSessions()
+    await refreshScheduleData()
   }
 }
 
@@ -1655,7 +1742,7 @@ const markAlpha = async (session) => {
   try {
     await api.patch(`/therapy-sessions/${session.id}/mark-alpha`)
 
-    await fetchSessions()
+    await refreshScheduleData()
 
     snackbarText.value = 'Session marked as Alpha.'
     snackbarColor.value = 'success'
@@ -1682,6 +1769,8 @@ async function updateAttendance(item, statusId) {
 
     item.therapy_session_status_id = statusId
     item.therapy_session_status = response.data.data.therapy_session_status
+
+    await fetchRegistration({ loadSessionTimes: false })
 
     snackbarText.value = response.data.message
     snackbarColor.value = 'success'
@@ -1716,7 +1805,7 @@ const deleteSession = async (item) => {
 
     snackbar.value = true
 
-    await fetchSessions()
+    await refreshScheduleData()
   } catch (err) {
     snackbarText.value = err.response?.data?.message || 'Failed to delete session'
 
@@ -1751,8 +1840,6 @@ onMounted(async () => {
   loading.value = true
 
   await fetchRegistration()
-
-  await fetchProgramCategorySessionTimes()
 
   await Promise.all([fetchSessions(), fetchTherapySessionStatuses()])
   const today = new Date()

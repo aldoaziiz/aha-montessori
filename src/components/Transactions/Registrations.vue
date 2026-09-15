@@ -77,6 +77,17 @@
                 </v-chip>
               </template>
 
+              <!-- REGISTRATION STATUS -->
+              <template v-slot:item.registration_status="{ item }">
+                <v-chip
+                  :color="getRegistrationStatusColor(item.registration_status)"
+                  variant="tonal"
+                  size="small"
+                >
+                  {{ getRegistrationStatusLabel(item) }}
+                </v-chip>
+              </template>
+
               <!-- ACTION -->
               <template v-slot:item.actions="{ item }">
                 <v-menu>
@@ -112,6 +123,30 @@
                     <!-- SCHEDULE -->
                     <v-list-item @click="schedule(item)">
                       <v-list-item-title>Schedule</v-list-item-title>
+                    </v-list-item>
+
+                    <v-divider class="my-1" />
+
+                    <v-list-item
+                      v-if="item.registration_status !== 'active'"
+                      @click="updateRegistrationStatus(item, 'active')"
+                    >
+                      <v-list-item-title>Set Active</v-list-item-title>
+                    </v-list-item>
+
+                    <v-list-item
+                      v-if="item.registration_status === 'active'"
+                      @click="updateRegistrationStatus(item, 'inactive')"
+                    >
+                      <v-list-item-title>Set Inactive</v-list-item-title>
+                    </v-list-item>
+
+                    <v-list-item
+                      v-if="item.registration_status !== 'closed'"
+                      base-color="error"
+                      @click="updateRegistrationStatus(item, 'closed')"
+                    >
+                      <v-list-item-title>Close Registration</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-menu>
@@ -194,6 +229,18 @@
 
             <v-chip :color="getStatusColor(selectedRegistration.payment_status?.id)" size="small">
               {{ selectedRegistration.payment_status?.name }}
+            </v-chip>
+          </v-col>
+
+          <v-col cols="12" md="6">
+            <div class="detail-label">Registration Status</div>
+
+            <v-chip
+              :color="getRegistrationStatusColor(selectedRegistration.registration_status)"
+              variant="tonal"
+              size="small"
+            >
+              {{ getRegistrationStatusLabel(selectedRegistration) }}
             </v-chip>
           </v-col>
         </v-row>
@@ -637,6 +684,11 @@ const headers = [
   },
 
   {
+    title: 'Registration Status',
+    key: 'registration_status',
+  },
+
+  {
     title: '',
     key: 'actions',
     sortable: false,
@@ -890,6 +942,56 @@ const getStatusColor = (id) => {
   if (id === 3) return 'success'
 
   return 'grey'
+}
+
+const getRegistrationStatusLabel = (registration) => {
+  if (registration?.registration_status_label) {
+    return registration.registration_status_label
+  }
+
+  const labels = {
+    active: 'Active',
+    inactive: 'Inactive',
+    closed: 'Closed',
+  }
+
+  return labels[registration?.registration_status] || 'Active'
+}
+
+const getRegistrationStatusColor = (status) => {
+  if (status === 'active') return 'success'
+  if (status === 'inactive') return 'warning'
+  if (status === 'closed') return 'error'
+  return 'grey'
+}
+
+const updateRegistrationStatus = async (item, registrationStatus) => {
+  const statusLabel = getRegistrationStatusLabel({
+    registration_status: registrationStatus,
+  })
+  const confirmationMessage =
+    registrationStatus === 'closed'
+      ? 'Close this registration?\n\nNew scheduling will no longer be allowed.'
+      : `Change this registration status to ${statusLabel}?`
+
+  if (!confirm(confirmationMessage)) return
+
+  pageActionText.value = `Updating status to ${statusLabel}...`
+  pageActionLoading.value = true
+
+  try {
+    await api.patch(`/registrations/${item.id}/status`, {
+      registration_status: registrationStatus,
+    })
+
+    await fetchData()
+    showSnackbar(`Registration status changed to ${statusLabel}`)
+  } catch (error) {
+    console.error('Error updating registration status:', error)
+    showSnackbar(error.response?.data?.message || 'Failed to update registration status', 'error')
+  } finally {
+    pageActionLoading.value = false
+  }
 }
 
 // ======================

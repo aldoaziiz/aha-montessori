@@ -137,6 +137,11 @@ const routes: RouteRecordRaw[] = [
     meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin', 'therapist'] },
   },
   {
+    path: '/school-schedule',
+    component: () => import('@/components/Guardian/SchoolSchedule.vue'),
+    meta: { layout: 'app', requiresAuth: true, allowedRoles: ['guardian'] },
+  },
+  {
     path: '/invoice/:token',
     name: 'public-invoice',
     component: () => import('@/components/Transactions/PublicInvoice.vue'),

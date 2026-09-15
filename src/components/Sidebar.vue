@@ -21,6 +21,18 @@
         <v-list-item-title>Dashboard</v-list-item-title>
       </v-list-item>
 
+      <v-list-item
+        v-if="authStore.isGuardian"
+        @click="setActiveMenu('SchoolSchedule')"
+        :active="activeMenu === 'SchoolSchedule'"
+        to="/school-schedule"
+      >
+        <template v-slot:prepend>
+          <v-icon>mdi-calendar-month</v-icon>
+        </template>
+        <v-list-item-title>School Schedule</v-list-item-title>
+      </v-list-item>
+
       <!-- master data -->
       <v-list-group v-if="authStore.isAdmin">
         <template v-slot:activator="{ props }">

@@ -594,7 +594,7 @@ const viewRegistration = async (item) => {
 // ======================
 
 const allowLateActivity = async (item) => {
-  if (!confirm('Allow therapist to post this activity?')) {
+  if (!confirm('Allow teacher to post this activity?')) {
     return
   }
 

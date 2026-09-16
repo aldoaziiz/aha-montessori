@@ -12,7 +12,14 @@
     </v-row>
 
     <v-row justify="end">
-      <v-btn color="primary" prepend-icon="mdi-plus" to="/activity/create">New Post</v-btn>
+      <v-btn
+        v-if="canManageActivity"
+        color="primary"
+        prepend-icon="mdi-plus"
+        to="/activity/create"
+      >
+        New Post
+      </v-btn>
     </v-row>
 
     <!-- SEARCH -->
@@ -291,7 +298,7 @@ const CHILDREN_PREVIEW_LIMIT = 3
 // ======================
 
 const canManageActivity = computed(() => {
-  return authStore.isAdmin || authStore.isTherapist
+  return authStore.isAdmin || authStore.isTeacher
 })
 
 // ======================

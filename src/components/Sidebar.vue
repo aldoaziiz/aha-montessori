@@ -8,9 +8,7 @@
   >
     <v-list dense nav>
       <v-list-item
-        v-if="
-          authStore.isAdmin || authStore.isGuardian || authStore.isTherapist || authStore.isStaff
-        "
+        v-if="authStore.isAdmin || authStore.isGuardian || authStore.isTeacher"
         @click="setActiveMenu('Dashboard')"
         :active="activeMenu === 'Dashboard'"
         to="/dashboard"
@@ -120,7 +118,7 @@
 
       <!-- activity -->
       <v-list-item
-        v-if="authStore.isAdmin || authStore.isGuardian || authStore.isTherapist"
+        v-if="authStore.isAdmin || authStore.isGuardian || authStore.isTeacher"
         @click="setActiveMenu('Activity')"
         :active="activeMenu === 'Activity'"
         to="/activity"
@@ -157,7 +155,7 @@
 
     <v-list dense nav>
       <v-list-item
-        v-if="authStore.isAdmin || authStore.isGuardian || authStore.isTherapist"
+        v-if="authStore.isAdmin || authStore.isGuardian || authStore.isTeacher"
         @click="setActiveMenu('helpSupport')"
         :active="activeMenu === 'helpSupport'"
         to="/help-support"

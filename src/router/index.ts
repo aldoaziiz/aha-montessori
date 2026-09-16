@@ -49,7 +49,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       layout: 'app',
       requiresAuth: true,
-      allowedRoles: ['admin', 'guardian', 'therapist', 'staff'],
+      allowedRoles: ['admin', 'guardian', 'teacher'],
     },
   },
 
@@ -134,7 +134,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/school-sessions',
     component: TherapySessions,
-    meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin', 'therapist'] },
+    meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin', 'teacher'] },
   },
   {
     path: '/school-schedule',
@@ -185,31 +185,31 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/registrations/:id/schedule',
     component: Schedule,
-    meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin', 'therapist'] },
+    meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin', 'teacher'] },
   },
 
   // Activity
   {
     path: '/activity',
     component: Activity,
-    meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin', 'therapist', 'guardian'] },
+    meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin', 'teacher', 'guardian'] },
   },
   {
     path: '/activity/create',
     component: ActivityCreate,
-    meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin', 'therapist'] },
+    meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin', 'teacher'] },
   },
   {
     path: '/activity/:id/edit',
     component: ActivityEdit,
-    meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin', 'therapist'] },
+    meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin', 'teacher'] },
   },
 
   // report
   {
     path: '/report',
     component: Report,
-    meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin', 'therapist', 'guardian'] },
+    meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin', 'teacher', 'guardian'] },
   },
   {
     path: '/report/billing',
@@ -226,7 +226,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/help-support',
     component: HelpSupport,
-    meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin', 'therapist', 'guardian'] },
+    meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin', 'teacher', 'guardian'] },
   },
 ]
 

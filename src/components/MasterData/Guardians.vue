@@ -190,6 +190,7 @@ const sortBy = ref([])
 const headers = [
   { title: 'ID No.', key: 'id_number' },
   { title: 'Name', key: 'name' },
+  { title: 'Email', key: 'email' },
   { title: 'Address', key: 'address' },
   { title: 'Phone', key: 'phone' },
   { title: 'Status', key: 'status' },

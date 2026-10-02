@@ -14,7 +14,7 @@
       <v-card-text>
         <v-row>
           <!-- SEARCH -->
-          <v-col cols="12" md="4">
+          <v-col cols="12" md="3">
             <v-text-field
               v-model="search"
               label="Search Child"
@@ -27,7 +27,7 @@
           </v-col>
 
           <!-- DATE -->
-          <v-col cols="12" md="3">
+          <v-col cols="12" md="2">
             <v-text-field
               v-model="filters.date"
               label="Date"
@@ -45,6 +45,21 @@
               item-title="name"
               item-value="id"
               label="Session Status"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              clearable
+            />
+          </v-col>
+
+          <!-- CATEGORY -->
+          <v-col cols="12" md="2">
+            <v-select
+              v-model="filters.program_category_id"
+              :items="programCategories"
+              item-title="name"
+              item-value="id"
+              label="Category"
               variant="outlined"
               density="comfortable"
               hide-details
@@ -100,6 +115,14 @@
           {{ formatDate(item.therapy_date) }}
         </template>
 
+        <template #item.program_category="{ item }">
+          {{ item.program_category?.name || '-' }}
+        </template>
+
+        <template #item.session_name="{ item }">
+          {{ item.session_name || '-' }}
+        </template>
+
         <template v-slot:item.time="{ item }">
           {{ item.start_time?.slice(0, 5) }}
           -
@@ -117,7 +140,7 @@
           </v-chip>
         </template>
 
-        <template #item.attendance="{ item }">
+        <template v-if="authStore.isAdmin" #item.attendance="{ item }">
           <div
             class="d-flex align-center ga-1"
             :class="{ 'opacity-60': isUpdatingAttendance(item.id) }"
@@ -158,7 +181,7 @@
         </template>
 
         <!-- ACTION -->
-        <template v-slot:item.actions="{ item }">
+        <template v-if="authStore.isAdmin" v-slot:item.actions="{ item }">
           <v-menu>
             <template v-slot:activator="{ props }">
               <v-btn v-bind="props" size="small" color="white">
@@ -212,7 +235,7 @@
     </v-card>
   </v-dialog>
 
-  <v-dialog v-model="sessionDialog" max-width="600">
+  <v-dialog v-if="authStore.isAdmin" v-model="sessionDialog" max-width="600">
     <v-card>
       <v-card-title>Add Session</v-card-title>
       <v-card-text class="pt-4">
@@ -278,12 +301,14 @@ import { ref, onMounted, watch, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import debounce from 'lodash/debounce'
 import api from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
 
 // ======================
 // ROUTER
 // ======================
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 // ======================
 // STATE
@@ -306,6 +331,7 @@ const resettingFilters = ref(false)
 const sessionDialog = ref(false)
 const editingSessionId = ref(null)
 const therapySessionStatuses = ref([])
+const programCategories = ref([])
 const registration = ref(null)
 const programCategorySessionTimes = ref([])
 const loadingSessionDialog = ref(false)
@@ -325,32 +351,36 @@ const filters = ref({
   date: '',
   therapist_id: null,
   therapy_session_status_id: null,
+  program_category_id: null,
 })
 
 // ======================
 // TABLE
 // ======================
 
-const headers = [
-  { title: 'Reg No.', key: 'registration_number' },
-  { title: 'Child', key: 'child' },
-  { title: 'Date', key: 'therapy_date' },
-  { title: 'Time', key: 'time' },
-  { title: 'Session Status', key: 'status' },
-  {
-    title: 'Attendance',
-    key: 'attendance',
-    sortable: false,
-    align: 'center',
-  },
-  { title: 'Notes', key: 'notes' },
-  {
-    title: '',
-    key: 'actions',
-    sortable: false,
-    align: 'center',
-  },
-]
+const headers = computed(() =>
+  [
+    { title: 'Reg No.', key: 'registration_number' },
+    { title: 'Child', key: 'child' },
+    { title: 'Category', key: 'program_category', sortable: false },
+    { title: 'Date', key: 'therapy_date' },
+    { title: 'Session Name', key: 'session_name', sortable: false },
+    { title: 'Time', key: 'time' },
+    { title: 'Session Status', key: 'status' },
+    {
+      title: 'Attendance',
+      key: 'attendance',
+      sortable: false,
+      align: 'center',
+    },
+    {
+      title: '',
+      key: 'actions',
+      sortable: false,
+      align: 'center',
+    },
+  ].filter((header) => authStore.isAdmin || !['attendance', 'actions'].includes(header.key)),
+)
 
 function isUpdatingAttendance(sessionId) {
   return updatingAttendance.value.includes(sessionId)
@@ -425,6 +455,7 @@ const fetchSessions = async () => {
         therapy_date: filters.value.date,
         therapist_id: null,
         therapy_session_status_id: filters.value.therapy_session_status_id,
+        program_category_id: filters.value.program_category_id,
         sort_by: sortBy.value[0]?.key,
         sort_order: sortBy.value[0]?.order,
       },
@@ -443,6 +474,11 @@ const fetchTherapySessionStatuses = async () => {
   const res = await api.get('/therapy-session-statuses')
 
   therapySessionStatuses.value = res.data.data
+}
+
+const fetchProgramCategories = async () => {
+  const res = await api.get('/program-categories')
+  programCategories.value = res.data.data
 }
 
 const fetchRegistration = async (registrationId) => {
@@ -549,6 +585,7 @@ const resetFilters = async () => {
       date: '',
       therapist_id: null,
       therapy_session_status_id: null,
+      program_category_id: null,
     }
 
     page.value = 1
@@ -787,7 +824,7 @@ const deleteSession = async (item) => {
 }
 
 onMounted(async () => {
-  await fetchTherapySessionStatuses()
+  await Promise.all([fetchTherapySessionStatuses(), fetchProgramCategories()])
 })
 </script>
 

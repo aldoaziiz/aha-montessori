@@ -69,7 +69,7 @@
       </v-list-group>
 
       <!-- transactions -->
-      <v-list-group v-if="authStore.isAdmin">
+      <v-list-group v-if="authStore.isAdmin || authStore.isTeacher">
         <template v-slot:activator="{ props }">
           <v-list-item
             v-bind="props"
@@ -78,6 +78,7 @@
           ></v-list-item>
         </template>
         <v-list-item
+          v-if="authStore.isAdmin"
           @click="setActiveMenu('Registrations')"
           :active="activeMenu === 'Registrations'"
           title="Registrations"

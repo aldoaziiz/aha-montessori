@@ -144,6 +144,13 @@
         /> -->
 
         <v-list-item
+          title="Monthly Overview"
+          to="/report/monthly-overview"
+          :active="activeMenu === 'MonthlyOverview'"
+          @click="setActiveMenu('MonthlyOverview')"
+        ></v-list-item>
+
+        <v-list-item
           title="Billing"
           to="/report/billing"
           :active="activeMenu === 'BillingReport'"

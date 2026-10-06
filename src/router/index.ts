@@ -221,6 +221,16 @@ const routes: RouteRecordRaw[] = [
       allowedRoles: ['admin'],
     },
   },
+  {
+    path: '/report/monthly-overview',
+    name: 'report-monthly-overview',
+    component: () => import('@/components/Report/MonthlyOverview.vue'),
+    meta: {
+      layout: 'app',
+      requiresAuth: true,
+      allowedRoles: ['admin'],
+    },
+  },
 
   // help support
   {

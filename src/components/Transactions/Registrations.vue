@@ -123,6 +123,9 @@
                     <!-- SCHEDULE -->
                     <v-list-item @click="schedule(item)">
                       <v-list-item-title>Schedule</v-list-item-title>
+                      <template #append>
+                        <v-icon icon="mdi-open-in-new" size="small" />
+                      </template>
                     </v-list-item>
 
                     <v-divider class="my-1" />
@@ -998,18 +1001,9 @@ const updateRegistrationStatus = async (item, registrationStatus) => {
 // VIEW SCHEDULE
 // ======================
 
-const schedule = async (item) => {
-  pageActionText.value = 'Opening Schedule...'
-
-  pageActionLoading.value = true
-
-  try {
-    await router.push(`/registrations/${item.id}/schedule`)
-  } finally {
-    setTimeout(() => {
-      pageActionLoading.value = false
-    }, 300)
-  }
+const schedule = (item) => {
+  const route = router.resolve(`/registrations/${item.id}/schedule`)
+  window.open(route.href, '_blank', 'noopener,noreferrer')
 }
 
 const openDetails = async (item) => {

@@ -105,6 +105,55 @@
           </div>
           <v-divider class="my-6" />
 
+          <!-- PAYMENT DETAILS AND TERMS -->
+          <v-card variant="tonal" color="primary" class="mb-6" rounded="lg">
+            <v-card-text>
+              <v-row>
+                <v-col cols="12" md="6">
+                  <div class="text-subtitle-1 font-weight-bold mb-2">Informasi Pembayaran</div>
+
+                  <div><strong>Bank:</strong> BNI</div>
+
+                  <div><strong>No. Rekening:</strong> 1982335396</div>
+
+                  <div><strong>Atas Nama:</strong> Fitria Ayu Rahmawati</div>
+                </v-col>
+
+                <v-col cols="12" md="6">
+                  <div class="text-subtitle-1 font-weight-bold mb-2">Syarat dan Ketentuan</div>
+
+                  <ol class="pl-5">
+                    <li class="mb-2">
+                      Masa berlaku biaya registrasi adalah 1 (satu) tahun terhitung sejak tanggal
+                      registrasi.
+                    </li>
+
+                    <li>
+                      Pembayaran dilakukan melalui rekening BNI yang tercantum pada bagian
+                      Informasi Pembayaran.
+                    </li>
+                  </ol>
+                </v-col>
+              </v-row>
+
+              <v-divider class="my-4" />
+
+              <div class="text-body-2">
+                Jika Ayah/Bunda memiliki pertanyaan, silakan hubungi kami melalui WhatsApp di
+                <a
+                  class="font-weight-medium text-no-wrap"
+                  href="https://wa.me/628115410354"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  +62 811-5410-354
+                </a>.
+                Kami dengan senang hati siap membantu. Terima kasih atas kepercayaan Ayah/Bunda
+                kepada AHA! Montessori.
+              </div>
+            </v-card-text>
+          </v-card>
+
           <!-- UNPAID -->
           <div v-if="invoice.payment_status.id === 1">
             <div class="text-subtitle-1 font-weight-bold mb-4">Upload Proof of Payment</div>

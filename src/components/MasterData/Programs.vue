@@ -345,9 +345,8 @@ const toggleStatus = async (item: any) => {
   statusLoading.value = true
 
   try {
-    await api.put(`/programs/${item.id}`, {
-      status_id: isActive ? 2 : 1,
-    })
+    const action = isActive ? 'deactivate' : 'activate'
+    await api.patch(`/programs/${item.id}/${action}`)
 
     await fetchPrograms()
   } catch (error) {

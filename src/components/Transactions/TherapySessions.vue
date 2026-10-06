@@ -28,14 +28,32 @@
 
           <!-- DATE -->
           <v-col cols="12" md="2">
-            <v-text-field
-              v-model="filters.date"
-              label="Date"
-              type="date"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-            />
+            <v-menu
+              v-model="datePickerMenu"
+              :close-on-content-click="false"
+              location="bottom start"
+            >
+              <template #activator="{ props }">
+                <v-text-field
+                  v-bind="props"
+                  :model-value="formatFilterDate(filters.date)"
+                  label="Date"
+                  prepend-inner-icon="mdi-calendar"
+                  variant="outlined"
+                  density="comfortable"
+                  hide-details
+                  readonly
+                  clearable
+                  @click:clear.stop="clearDateFilter"
+                />
+              </template>
+
+              <v-date-picker
+                :model-value="filters.date || null"
+                color="primary"
+                @update:model-value="setDateFilter"
+              />
+            </v-menu>
           </v-col>
 
           <v-col cols="12" md="3">
@@ -328,6 +346,7 @@ const snackbarColor = ref('success')
 const deleting = ref(false)
 const pageActionLoading = ref(false)
 const resettingFilters = ref(false)
+const datePickerMenu = ref(false)
 const sessionDialog = ref(false)
 const editingSessionId = ref(null)
 const therapySessionStatuses = ref([])
@@ -606,6 +625,37 @@ const formatDate = (date) => {
     month: 'short',
     year: 'numeric',
   })
+}
+
+const formatFilterDate = (value) => {
+  if (!value) return ''
+
+  const [year, month, day] = String(value).slice(0, 10).split('-').map(Number)
+  if (!year || !month || !day) return ''
+
+  return new Date(year, month - 1, day).toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+const setDateFilter = (value) => {
+  if (value instanceof Date) {
+    const year = value.getFullYear()
+    const month = String(value.getMonth() + 1).padStart(2, '0')
+    const day = String(value.getDate()).padStart(2, '0')
+    filters.value.date = `${year}-${month}-${day}`
+  } else {
+    filters.value.date = value ? String(value).slice(0, 10) : ''
+  }
+
+  datePickerMenu.value = false
+}
+
+const clearDateFilter = () => {
+  filters.value.date = ''
+  datePickerMenu.value = false
 }
 
 // ======================

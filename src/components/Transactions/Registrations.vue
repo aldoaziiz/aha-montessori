@@ -1,13 +1,48 @@
 <template>
   <div class="registrations-content">
     <!-- Header -->
-    <div class="page-header mb-6">
+    <div class="page-header mb-6 flex-wrap ga-4">
       <div>
         <h1 class="text-h4 font-weight-bold mb-2">Registrations</h1>
 
         <p class="text-body2 text-grey">Manage and view registration data</p>
       </div>
+
+      <div class="d-flex align-center ga-3">
+        <div class="text-right">
+          <div class="text-body-2 font-weight-medium">Public Registration</div>
+          <v-chip
+            v-if="publicRegistrationSetting?.configured"
+            :color="publicRegistrationSetting.is_active ? 'success' : 'grey'"
+            size="small"
+            variant="tonal"
+          >
+            {{ publicRegistrationSetting.is_active ? 'Active' : 'Inactive' }}
+          </v-chip>
+          <v-chip v-else-if="!publicRegistrationSettingsLoading" color="warning" size="small">
+            Setup Required
+          </v-chip>
+        </div>
+
+        <v-btn
+          :color="publicRegistrationSetting?.is_active ? 'error' : 'success'"
+          :loading="publicRegistrationSettingsLoading || publicRegistrationSettingsSaving"
+          :disabled="!publicRegistrationSetting?.configured"
+          @click="togglePublicRegistration"
+        >
+          {{ publicRegistrationSetting?.is_active ? 'Deactivate Link' : 'Activate Link' }}
+        </v-btn>
+      </div>
     </div>
+
+    <v-alert
+      v-if="publicRegistrationSetting && !publicRegistrationSetting.configured"
+      type="warning"
+      variant="tonal"
+      class="mb-4"
+    >
+      Public registration settings need database setup before this link can be activated.
+    </v-alert>
 
     <!-- Table -->
     <v-row>
@@ -544,7 +579,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onUnmounted, computed } from 'vue'
+import { ref, watch, onUnmounted, computed, onMounted } from 'vue'
 
 import api from '@/services/api'
 
@@ -593,6 +628,9 @@ const rejectLoading = ref(false)
 const rejectDialog = ref(false)
 
 const adminNote = ref('')
+const publicRegistrationSetting = ref(null)
+const publicRegistrationSettingsLoading = ref(true)
+const publicRegistrationSettingsSaving = ref(false)
 
 const showSnackbar = (text, color = 'success') => {
   snackbarText.value = text
@@ -705,6 +743,42 @@ const getProgramCategoryNames = (registration) => {
     .filter(Boolean)
 
   return [...new Set(names)].join(', ') || '-'
+}
+
+const fetchPublicRegistrationSetting = async () => {
+  publicRegistrationSettingsLoading.value = true
+
+  try {
+    const response = await api.get('/settings/public-registration')
+    publicRegistrationSetting.value = response.data.data
+  } catch (error) {
+    console.error(error)
+    showSnackbar(error.response?.data?.message || 'Failed to load public registration status.', 'error')
+  } finally {
+    publicRegistrationSettingsLoading.value = false
+  }
+}
+
+const togglePublicRegistration = async () => {
+  if (!publicRegistrationSetting.value?.configured) return
+
+  const isActive = !publicRegistrationSetting.value.is_active
+  const action = isActive ? 'activate' : 'deactivate'
+
+  if (!confirm(`Are you sure you want to ${action} the public registration link?`)) return
+
+  publicRegistrationSettingsSaving.value = true
+
+  try {
+    const response = await api.put('/settings/public-registration', { is_active: isActive })
+    publicRegistrationSetting.value = response.data.data
+    showSnackbar(`Public registration link ${isActive ? 'activated' : 'deactivated'}.`)
+  } catch (error) {
+    console.error(error)
+    showSnackbar(error.response?.data?.message || 'Failed to update public registration status.', 'error')
+  } finally {
+    publicRegistrationSettingsSaving.value = false
+  }
 }
 
 // ======================
@@ -1090,6 +1164,8 @@ const onOptionsChange = (options) => {
 onUnmounted(() => {
   debouncedFetch.cancel()
 })
+
+onMounted(fetchPublicRegistrationSetting)
 </script>
 
 <style scoped>

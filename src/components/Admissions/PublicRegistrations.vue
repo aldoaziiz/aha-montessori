@@ -27,8 +27,21 @@
         </div>
       </div>
 
+      <div v-if="!availabilityLoaded" class="text-center py-10">
+        <v-progress-circular indeterminate color="primary" />
+        <div class="mt-3 text-medium-emphasis">Checking registration availability...</div>
+      </div>
+
+      <v-alert v-else-if="availabilityError" type="error" variant="tonal">
+        Registration is temporarily unavailable. Please contact AHA Montessori for assistance.
+      </v-alert>
+
+      <v-alert v-else-if="!publicRegistrationEnabled" type="info" variant="tonal">
+        Public registration is currently closed. Please contact AHA Montessori for assistance.
+      </v-alert>
+
       <!-- FORM -->
-      <v-form ref="formRef" @submit.prevent="submitForm">
+      <v-form v-else ref="formRef" @submit.prevent="submitForm">
         <!-- ================= CHILD ================= -->
         <v-card class="mb-8 rounded-xl" elevation="1">
           <v-card-title>Child Information</v-card-title>
@@ -348,6 +361,9 @@ const router = useRouter()
 
 const loading = ref(false)
 const formRef = ref(null)
+const availabilityLoaded = ref(false)
+const availabilityError = ref(false)
+const publicRegistrationEnabled = ref(false)
 
 const snackbar = ref(false)
 const snackbarText = ref('')
@@ -517,6 +533,8 @@ const fetchMaster = async () => {
 ========================= */
 
 const submitForm = async () => {
+  if (!publicRegistrationEnabled.value) return
+
   const { valid } = await formRef.value.validate()
   if (!valid) return
 
@@ -553,6 +571,10 @@ const submitForm = async () => {
   } catch (err) {
     console.error(err)
 
+    if (err.response?.status === 403) {
+      publicRegistrationEnabled.value = false
+    }
+
     const message =
       err.response?.data?.message ||
       Object.values(err.response?.data?.errors || {})[0]?.[0] ||
@@ -563,6 +585,18 @@ const submitForm = async () => {
     snackbar.value = true
   } finally {
     loading.value = false
+  }
+}
+
+const fetchPublicRegistrationStatus = async () => {
+  try {
+    const response = await api.get('/public-registration/status')
+    publicRegistrationEnabled.value = response.data.is_active === true
+  } catch (error) {
+    console.error(error)
+    availabilityError.value = true
+  } finally {
+    availabilityLoaded.value = true
   }
 }
 
@@ -598,7 +632,10 @@ watch(
    LIFECYCLE
 ========================= */
 
-onMounted(fetchMaster)
+onMounted(() => {
+  fetchPublicRegistrationStatus()
+  fetchMaster()
+})
 </script>
 
 <style scoped>

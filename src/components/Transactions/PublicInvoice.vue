@@ -82,21 +82,41 @@
           <div v-for="item in invoice.items" :key="item.id" class="d-flex align-center py-2">
             <div class="flex-grow-1">
               {{ item.description }}
+              <div v-if="Number(item.discount_amount) > 0" class="text-caption text-medium-emphasis">
+                Diskon {{ Number(item.discount_percentage) }}% · -{{ formatCurrency(item.discount_amount) }}
+              </div>
             </div>
 
             <div class="text-center" style="width: 80px">
               {{ item.quantity }}
             </div>
 
-            <div class="text-right font-weight-medium" style="width: 140px">
-              {{ formatCurrency(item.subtotal) }}
+            <div class="text-right" style="width: 140px">
+              <div
+                v-if="Number(item.discount_amount) > 0"
+                class="text-caption text-decoration-line-through text-medium-emphasis"
+              >
+                {{ formatCurrency(item.subtotal) }}
+              </div>
+              <div class="font-weight-medium">
+                {{ formatCurrency(calculateNetItemTotal(item)) }}
+              </div>
             </div>
           </div>
 
-          <v-divider class="my-6" />
+          <v-divider class="my-4" />
+
+          <div class="d-flex justify-space-between text-body-2 py-1">
+            <span>Subtotal</span>
+            <span>{{ formatCurrency(invoiceSubtotal) }}</span>
+          </div>
+          <div class="d-flex justify-space-between text-body-2 py-1">
+            <span>Diskon</span>
+            <span>{{ invoiceDiscount > 0 ? '-' + formatCurrency(invoiceDiscount) : '-' }}</span>
+          </div>
 
           <!-- TOTAL -->
-          <div class="d-flex justify-space-between text-h6 font-weight-bold">
+          <div class="d-flex justify-space-between text-h6 font-weight-bold mt-2">
             <span>TOTAL</span>
 
             <span>
@@ -201,7 +221,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/services/api'
 
@@ -210,6 +230,13 @@ const route = useRoute()
 const loading = ref(true)
 
 const invoice = ref(null)
+
+const invoiceSubtotal = computed(() =>
+  (invoice.value?.items ?? []).reduce((sum, item) => sum + Number(item.subtotal || 0), 0),
+)
+const invoiceDiscount = computed(() =>
+  (invoice.value?.items ?? []).reduce((sum, item) => sum + Number(item.discount_amount || 0), 0),
+)
 
 const error = ref('')
 
@@ -284,6 +311,9 @@ const uploadReceipt = async () => {
 const formatCurrency = (value) => {
   return `Rp ${Number(value || 0).toLocaleString('id-ID')}`
 }
+
+const calculateNetItemTotal = (item) =>
+  Math.max(0, Number(item?.subtotal || 0) - Number(item?.discount_amount || 0))
 
 const getStatusColor = (id) => {
   if (id === 1) return 'warning'

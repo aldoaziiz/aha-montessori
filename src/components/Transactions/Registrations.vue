@@ -211,6 +211,106 @@
     </v-dialog>
   </div>
 
+    <v-dialog v-model="billingGenerationDialog" max-width="850" persistent scrollable>
+    <v-card rounded="xl">
+      <v-card-title class="d-flex justify-space-between align-center">
+        <div class="text-h6 font-weight-bold">Generate Billing</div>
+        <v-btn icon variant="text" @click="billingGenerationDialog = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </v-card-title>
+
+      <v-divider />
+
+      <v-card-text v-if="billingPreviewLoading" class="py-8 text-center">
+        <v-progress-circular indeterminate color="primary" />
+        <div class="mt-3">Loading billing items...</div>
+      </v-card-text>
+
+      <v-card-text v-else-if="billingPreview">
+        <div class="text-body-2 mb-4">
+          <div><strong>Registration:</strong> {{ billingPreview.registration_number }}</div>
+          <div><strong>Child:</strong> {{ billingPreview.child_name || '-' }}</div>
+        </div>
+
+        <v-row>
+          <v-col v-for="item in billingDraftItems" :key="item.registration_program_id" cols="12">
+            <v-card variant="outlined" class="pa-4">
+              <div class="d-flex justify-space-between flex-wrap ga-2">
+                <div class="font-weight-medium">{{ item.description }}</div>
+                <div class="text-body-2 text-medium-emphasis">
+                  {{ formatCurrency(item.price) }} × {{ item.quantity }}
+                </div>
+              </div>
+
+              <v-row align="center" class="mt-2">
+                <v-col cols="12" sm="4">
+                  <v-text-field
+                    v-model.number="item.discount_percentage"
+                    type="number"
+                    label="Discount"
+                    suffix="%"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    variant="outlined"
+                    hide-details
+                    @blur="normalizeDiscount(item)"
+                  />
+                </v-col>
+                <v-col cols="12" sm="4">
+                  <div class="text-caption text-medium-emphasis">Discount Amount</div>
+                  <div class="font-weight-medium">
+                    {{ formatCurrency(calculateDiscountAmount(item)) }}
+                  </div>
+                </v-col>
+                <v-col cols="12" sm="4">
+                  <div class="text-caption text-medium-emphasis">After Discount</div>
+                  <div class="font-weight-medium">
+                    {{ formatCurrency(calculateNetItemTotal(item)) }}
+                  </div>
+                </v-col>
+              </v-row>
+            </v-card>
+          </v-col>
+        </v-row>
+
+        <v-divider class="my-4" />
+
+        <div class="d-flex justify-space-between py-1">
+          <span>Subtotal</span>
+          <span>{{ formatCurrency(billingPreviewSubtotal) }}</span>
+        </div>
+        <div class="d-flex justify-space-between py-1">
+          <span>Discount</span>
+          <span>{{ billingPreviewDiscount > 0 ? '-' + formatCurrency(billingPreviewDiscount) : '-' }}</span>
+        </div>
+        <div class="d-flex justify-space-between text-h6 font-weight-bold mt-2">
+          <span>Total</span>
+          <span>{{ formatCurrency(billingPreviewTotal) }}</span>
+        </div>
+      </v-card-text>
+
+      <v-divider />
+
+      <v-card-actions class="pa-4">
+        <v-spacer />
+        <v-btn variant="text" :disabled="billingGenerationLoading" @click="billingGenerationDialog = false">
+          Cancel
+        </v-btn>
+        <v-btn
+          color="primary"
+          prepend-icon="mdi-file-document-check"
+          :loading="billingGenerationLoading"
+          :disabled="billingPreviewLoading || !billingDraftItems.length"
+          @click="submitGenerateBilling"
+        >
+          Generate
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+
   <v-dialog v-model="detailsDialog" max-width="900" scrollable>
     <v-card rounded="xl">
       <v-card-title class="d-flex justify-space-between align-center">
@@ -473,20 +573,42 @@
         <div v-for="item in selectedBilling.items" :key="item.id" class="d-flex align-center py-2">
           <div class="flex-grow-1">
             {{ item.description }}
+            <div v-if="Number(item.discount_amount) > 0" class="text-caption text-medium-emphasis">
+              Discount {{ Number(item.discount_percentage) }}% · -{{ formatCurrency(item.discount_amount) }}
+            </div>
           </div>
 
           <div class="text-center" style="width: 80px">
             {{ item.quantity }}
           </div>
 
-          <div class="text-right font-weight-medium" style="width: 140px">
-            {{ formatCurrency(item.subtotal) }}
+          <div class="text-right" style="width: 140px">
+            <div
+              v-if="Number(item.discount_amount) > 0"
+              class="text-caption text-decoration-line-through text-medium-emphasis"
+            >
+              {{ formatCurrency(item.subtotal) }}
+            </div>
+            <div class="font-weight-medium">
+              {{ formatCurrency(calculateNetItemTotal(item)) }}
+            </div>
           </div>
         </div>
 
         <v-divider class="my-4" />
 
-        <div class="d-flex justify-space-between font-weight-bold text-h6">
+        <div class="d-flex justify-space-between py-1">
+          <span>Subtotal</span>
+          <span>{{ formatCurrency(billingSubtotal(selectedBilling.items)) }}</span>
+        </div>
+        <div class="d-flex justify-space-between py-1">
+          <span>Discount</span>
+          <span>
+            {{ billingDiscount(selectedBilling.items) > 0 ? '-' + formatCurrency(billingDiscount(selectedBilling.items)) : '-' }}
+          </span>
+        </div>
+
+        <div class="d-flex justify-space-between font-weight-bold text-h6 mt-2">
           <span>TOTAL</span>
 
           <span>
@@ -616,6 +738,19 @@ const detailsLoading = ref(false)
 const selectedRegistration = ref(null)
 const billingDialog = ref(false)
 const billingLoading = ref(false)
+const billingGenerationDialog = ref(false)
+const billingPreviewLoading = ref(false)
+const billingGenerationLoading = ref(false)
+const selectedRegistrationForBilling = ref(null)
+const billingPreview = ref(null)
+const billingDraftItems = ref([])
+const billingPreviewSubtotal = computed(() =>
+  billingDraftItems.value.reduce((sum, item) => sum + Number(item.subtotal || 0), 0),
+)
+const billingPreviewDiscount = computed(() =>
+  billingDraftItems.value.reduce((sum, item) => sum + calculateDiscountAmount(item), 0),
+)
+const billingPreviewTotal = computed(() => billingPreviewSubtotal.value - billingPreviewDiscount.value)
 const selectedBilling = ref(null)
 const cancelBillingLoading = ref(false)
 const snackbar = ref(false)
@@ -637,6 +772,28 @@ const showSnackbar = (text, color = 'success') => {
   snackbarColor.value = color
   snackbar.value = true
 }
+
+const calculateDiscountAmount = (item) => {
+  const subtotal = Number(item?.subtotal || 0)
+  const percentage = Math.min(100, Math.max(0, Number(item?.discount_percentage) || 0))
+  return Math.round((subtotal * percentage) / 100)
+}
+
+const calculateNetItemTotal = (item) =>
+  Math.max(0, Number(item?.subtotal || 0) - Number(item?.discount_amount || calculateDiscountAmount(item)))
+
+const normalizeDiscount = (item) => {
+  const percentage = Number(item.discount_percentage)
+  item.discount_percentage = Number.isFinite(percentage)
+    ? Math.round(Math.min(100, Math.max(0, percentage)) * 100) / 100
+    : 0
+}
+
+const billingSubtotal = (items = []) =>
+  items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0)
+
+const billingDiscount = (items = []) =>
+  items.reduce((sum, item) => sum + Number(item.discount_amount || 0), 0)
 
 const downloadPdf = async () => {
   try {
@@ -815,30 +972,52 @@ const fetchData = async () => {
 
 // generate billing
 const generateBilling = async (item) => {
-  const confirmed = confirm(
-    'Generate billing?\n\nRegistration will be locked and can no longer be edited.',
-  )
-
-  if (!confirmed) {
-    return
-  }
+  billingGenerationDialog.value = true
+  billingPreviewLoading.value = true
+  selectedRegistrationForBilling.value = item
+  billingPreview.value = null
+  billingDraftItems.value = []
 
   try {
-    pageActionText.value = 'Generating Billing...'
+    const response = await api.get('/registrations/' + item.id + '/billing-preview')
+    billingPreview.value = response.data.data
+    billingDraftItems.value = response.data.data.items.map((line) => ({
+      ...line,
+      discount_percentage: 0,
+    }))
+  } catch (error) {
+    console.error(error)
+    billingGenerationDialog.value = false
+    showSnackbar(error.response?.data?.message || 'Failed to load billing items.', 'error')
+  } finally {
+    billingPreviewLoading.value = false
+  }
+}
 
-    pageActionLoading.value = true
+const submitGenerateBilling = async () => {
+  if (!selectedRegistrationForBilling.value) return
 
-    await api.post(`/registrations/${item.id}/generate-billing`)
+  billingDraftItems.value.forEach(normalizeDiscount)
+  billingGenerationLoading.value = true
 
+  try {
+    const discounts = billingDraftItems.value.map((line) => ({
+      registration_program_id: line.registration_program_id,
+      discount_percentage: line.discount_percentage,
+    }))
+    await api.post(
+      '/registrations/' + selectedRegistrationForBilling.value.id + '/generate-billing',
+      { discounts },
+    )
+
+    billingGenerationDialog.value = false
     await fetchData()
-
     showSnackbar('Billing generated successfully')
   } catch (error) {
     console.error(error)
-
     showSnackbar(error.response?.data?.message || 'Failed to generate billing', 'error')
   } finally {
-    pageActionLoading.value = false
+    billingGenerationLoading.value = false
   }
 }
 

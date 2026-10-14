@@ -11,7 +11,7 @@
       </div>
     </v-row>
 
-    <v-row justify="end">
+    <v-row justify="end" class="activity-new-post-row">
       <v-btn
         v-if="canManageActivity"
         color="primary"
@@ -22,8 +22,8 @@
       </v-btn>
     </v-row>
 
-    <!-- SEARCH -->
-    <v-row>
+    <!-- FILTERS -->
+    <div class="activity-feed-filters">
       <v-text-field
         v-model="search"
         placeholder="Search Child"
@@ -31,11 +31,25 @@
         variant="outlined"
         rounded="lg"
         clearable
-        class="mb-4"
+        hide-details
         @keyup.enter="searchActivity"
         @click:clear="clearSearch"
       />
-    </v-row>
+
+      <v-select
+        v-model="contentTypeFilter"
+        :items="contentTypeOptions"
+        item-title="title"
+        item-value="value"
+        label="Content Type"
+        variant="outlined"
+        rounded="lg"
+        hide-details
+        :loading="contentTypesLoading"
+        class="activity-content-type-filter"
+        @update:model-value="filterByContentType"
+      />
+    </div>
 
     <!-- LOADING -->
 
@@ -211,10 +225,7 @@
         v-if="!activities.length"
         icon="mdi-post-outline"
         title="No activities found"
-        text="
-      Try another child name or create
-      a new activity.
-    "
+        text="Try another child name or content type filter."
       />
     </div>
   </v-container>
@@ -267,6 +278,16 @@ const initialLoading = ref(false)
 const loadingMore = ref(false)
 
 const search = ref('')
+const contentTypes = ref([])
+const contentTypeFilter = ref('all')
+const contentTypesLoading = ref(false)
+const contentTypeOptions = computed(() => [
+  { title: 'All Content Types', value: 'all' },
+  ...contentTypes.value.map((contentType) => ({
+    title: contentType.name,
+    value: String(contentType.id),
+  })),
+])
 
 const page = ref(1)
 const lastPage = ref(1)
@@ -278,6 +299,16 @@ const hasMore = computed(() => {
 })
 
 let fetchRequestId = 0
+
+function activityQueryParams(targetPage) {
+  return {
+    page: targetPage,
+    per_page: PER_PAGE,
+    search: search.value.trim() || undefined,
+    activity_content_type_id:
+      contentTypeFilter.value === 'all' ? undefined : contentTypeFilter.value,
+  }
+}
 
 const deleteDialog = ref(false)
 const deleting = ref(false)
@@ -346,11 +377,7 @@ async function fetchActivities({ reset = false } = {}) {
 
   try {
     const response = await api.get('/activities', {
-      params: {
-        page: targetPage,
-        per_page: PER_PAGE,
-        search: search.value.trim() || undefined,
-      },
+      params: activityQueryParams(targetPage),
     })
 
     /*
@@ -410,11 +437,7 @@ async function backfillAfterDelete() {
 
   try {
     const response = await api.get('/activities', {
-      params: {
-        page: targetPage,
-        per_page: PER_PAGE,
-        search: search.value.trim() || undefined,
-      },
+      params: activityQueryParams(targetPage),
     })
 
     const incomingActivities = response.data.data ?? []
@@ -439,6 +462,32 @@ async function backfillAfterDelete() {
   } finally {
     loadingMore.value = false
   }
+}
+
+// ======================
+// FILTERS
+// ======================
+
+async function fetchContentTypes() {
+  contentTypesLoading.value = true
+
+  try {
+    const response = await api.get('/master-data')
+    contentTypes.value = response.data.activity_content_types ?? []
+  } catch (error) {
+    console.error('Failed to load activity content types.', error)
+    snackbar.value = true
+    snackbarColor.value = 'error'
+    snackbarText.value = 'Failed to load content type filters.'
+  } finally {
+    contentTypesLoading.value = false
+  }
+}
+
+function filterByContentType() {
+  fetchActivities({
+    reset: true,
+  })
 }
 
 // ======================
@@ -681,6 +730,7 @@ async function deleteActivity() {
 // ======================
 
 onMounted(() => {
+  fetchContentTypes()
   fetchActivities({
     reset: true,
   })
@@ -688,6 +738,31 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.activity-new-post-row {
+  margin-bottom: 20px;
+}
+
+.activity-feed-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto 20px;
+}
+
+.activity-content-type-filter {
+  width: 100%;
+}
+
+@media (min-width: 600px) {
+  .activity-content-type-filter {
+    width: 30%;
+    min-width: 220px;
+    align-self: flex-start;
+  }
+}
+
 .activity-card {
   border: 1px solid #e0e0e0;
 }

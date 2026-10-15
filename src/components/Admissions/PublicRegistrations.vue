@@ -314,7 +314,7 @@
 
               <v-select
                 v-model="form.registration.program_duration_months"
-                label="Learning Period"
+                label="Learning Period in Month"
                 :items="[
                   { title: '1', value: 1 },
                   { title: '2', value: 2 },
@@ -417,7 +417,7 @@ const form = ref({
     program_category_id: null,
     program_ids: [],
     payer_id: null,
-    program_duration_months: 6,
+    program_duration_months: 1,
   },
 })
 

@@ -127,47 +127,52 @@
             {{ registrationMessage }}
           </v-alert>
 
-          <v-row v-if="selectedSummary" class="mt-2">
-            <v-col cols="4">
-              <v-card color="#F5F5F5" class="summary-card text-grey-darken-4" flat>
-                <v-card-text>
-                  <div class="summary-card__label">Total Session</div>
-                  <div class="text-h5 font-weight-bold">
-                    {{ selectedSummary.total_session }}
-                  </div>
-                </v-card-text>
-              </v-card>
-            </v-col>
+          <div v-if="selectedSummary" class="summary-grid mt-2">
+            <v-card color="#F5F5F5" class="summary-card text-grey-darken-4" flat>
+              <v-card-text>
+                <div class="summary-card__label">Total Session</div>
+                <div class="text-h5 font-weight-bold">
+                  {{ selectedSummary.total_session }}
+                </div>
+              </v-card-text>
+            </v-card>
 
-            <v-col cols="4">
-              <v-card color="#E8F5E9" class="summary-card text-grey-darken-4" flat>
-                <v-card-text>
-                  <div class="summary-card__label">Used Session</div>
-                  <div class="text-h5 font-weight-bold">
-                    {{ selectedSummary.used_session }}
-                  </div>
-                </v-card-text>
-              </v-card>
-            </v-col>
+            <v-card color="#FFF8E1" class="summary-card text-grey-darken-4" flat>
+              <v-card-text>
+                <div class="summary-card__label">Created Session</div>
+                <div class="text-h5 font-weight-bold">
+                  {{ selectedSummary.created_session ?? '-' }}
+                </div>
+              </v-card-text>
+            </v-card>
 
-            <v-col cols="4">
-              <v-card
-                :color="remainingSessionState.color"
-                class="summary-card text-grey-darken-4"
-                flat
-              >
-                <v-card-text>
-                  <div class="summary-card__label">Remaining Session</div>
-                  <div class="text-h5 font-weight-bold">
-                    {{ selectedSummary.remaining_session }}
-                  </div>
-                  <div v-if="remainingSessionState.label" class="summary-card__state">
-                    {{ remainingSessionState.label }}
-                  </div>
-                </v-card-text>
-              </v-card>
-            </v-col>
-          </v-row>
+            <v-card color="#E3F2FD" class="summary-card text-grey-darken-4" flat>
+              <v-card-text>
+                <div class="summary-card__label">Scheduled Session</div>
+                <div class="text-h5 font-weight-bold">
+                  {{ selectedSummary.scheduled_session ?? '-' }}
+                </div>
+              </v-card-text>
+            </v-card>
+
+            <v-card color="#E8F5E9" class="summary-card text-grey-darken-4" flat>
+              <v-card-text>
+                <div class="summary-card__label">Completed Session</div>
+                <div class="text-h5 font-weight-bold">
+                  {{ selectedSummary.completed_session ?? '-' }}
+                </div>
+              </v-card-text>
+            </v-card>
+
+            <v-card color="#E0F7FA" class="summary-card text-grey-darken-4" flat>
+              <v-card-text>
+                <div class="summary-card__label">Available to Schedule</div>
+                <div class="text-h5 font-weight-bold">
+                  {{ selectedSummary.available_to_schedule ?? '-' }}
+                </div>
+              </v-card-text>
+            </v-card>
+          </div>
         </template>
       </v-card-text>
     </v-card>
@@ -487,23 +492,6 @@ const availableMonths = computed(() => {
     })
 })
 
-const remainingSessionState = computed(() => {
-  if (!selectedSummary.value) return { color: '#F5F5F5', label: '' }
-  if (selectedSummary.value.is_session_expired) {
-    return { color: '#FFEBEE', label: 'Expired' }
-  }
-  if (selectedSummary.value.remaining_session <= 0) {
-    return { color: '#FFEBEE', label: 'No sessions remaining' }
-  }
-  if (
-    selectedSummary.value.total_session > 0 &&
-    selectedSummary.value.remaining_session / selectedSummary.value.total_session <= 0.2
-  ) {
-    return { color: '#FFF8E1', label: 'Running low' }
-  }
-
-  return { color: '#E3F2FD', label: 'Available' }
-})
 
 const calendarDatesByDate = computed(() => {
   const entries = calendarData.value?.dates?.map((day) => [day.date, day]) ?? []
@@ -571,8 +559,8 @@ const registrationMessage = computed(() => {
   if (selectedSummary.value?.is_session_expired) {
     return 'Sessions for this registration have expired.'
   }
-  if (selectedSummary.value?.remaining_session <= 0) {
-    return 'No sessions remain for this registration.'
+  if (selectedSummary.value?.available_to_schedule <= 0) {
+    return 'No sessions are available to schedule for this registration.'
   }
   if (availableYears.value.length === 0) {
     return 'No scheduling period is available for this registration.'
@@ -867,6 +855,11 @@ onMounted(fetchContext)
   font-size: 0.875rem;
 }
 
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
 .summary-card {
   height: 100%;
   min-height: 112px;
@@ -1007,6 +1000,11 @@ onMounted(fetchContext)
 
   .session-options {
     grid-template-columns: 1fr;
+  }
+}
+@media (min-width: 601px) and (max-width: 960px) {
+  .summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 </style>

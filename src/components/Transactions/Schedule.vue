@@ -395,46 +395,52 @@
       <v-alert v-if="sessionValidityMessage" type="warning" variant="tonal" class="mb-4">
         {{ sessionValidityMessage }}
       </v-alert>
-      <v-row class="mb-4">
-        <v-col cols="12" md="4">
-          <v-card :color="totalCardColor" class="h-100 text-grey-darken-4">
-            <v-card-text>
-              <div class="text-caption">Total Session</div>
+      <div class="summary-grid mb-4">
+        <v-card color="#F5F5F5" class="summary-card h-100 text-grey-darken-4">
+          <v-card-text>
+            <div class="text-caption">Total Session</div>
+            <div class="text-h5 font-weight-bold">
+              {{ totalSessions ?? '-' }}
+            </div>
+          </v-card-text>
+        </v-card>
 
-              <div class="text-h5 font-weight-bold">
-                {{ totalSessions ?? '-' }}
-              </div>
-            </v-card-text>
-          </v-card>
-        </v-col>
+        <v-card color="#FFF8E1" class="summary-card h-100 text-grey-darken-4">
+          <v-card-text>
+            <div class="text-caption">Created Session</div>
+            <div class="text-h5 font-weight-bold">
+              {{ createdSessions ?? '-' }}
+            </div>
+          </v-card-text>
+        </v-card>
 
-        <v-col cols="12" md="4">
-          <v-card :color="usedCardColor" class="h-100 text-grey-darken-4">
-            <v-card-text>
-              <div class="text-caption">Used Session</div>
+        <v-card color="#E3F2FD" class="summary-card h-100 text-grey-darken-4">
+          <v-card-text>
+            <div class="text-caption">Scheduled Session</div>
+            <div class="text-h5 font-weight-bold">
+              {{ scheduledSessions ?? '-' }}
+            </div>
+          </v-card-text>
+        </v-card>
 
-              <div class="text-h5 font-weight-bold">
-                {{ usedSessions ?? '-' }}
-              </div>
-            </v-card-text>
-          </v-card>
-        </v-col>
+        <v-card color="#E8F5E9" class="summary-card h-100 text-grey-darken-4">
+          <v-card-text>
+            <div class="text-caption">Completed Session</div>
+            <div class="text-h5 font-weight-bold">
+              {{ completedSessions ?? '-' }}
+            </div>
+          </v-card-text>
+        </v-card>
 
-        <v-col cols="12" md="4">
-          <v-card :color="remainingSessionState.color" class="h-100 text-grey-darken-4">
-            <v-card-text>
-              <div class="text-caption">Remaining Session</div>
-
-              <div class="text-h5 font-weight-bold">
-                {{ remainingSessions ?? '-' }}
-              </div>
-              <div v-if="remainingSessionState.label" class="text-caption mt-1">
-                {{ remainingSessionState.label }}
-              </div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
+        <v-card color="#E0F7FA" class="summary-card h-100 text-grey-darken-4">
+          <v-card-text>
+            <div class="text-caption">Available to Schedule</div>
+            <div class="text-h5 font-weight-bold">
+              {{ availableToScheduleSessions ?? '-' }}
+            </div>
+          </v-card-text>
+        </v-card>
+      </div>
 
       <v-alert v-if="sessionSummaryMessage" type="info" variant="tonal" class="mb-4">
         {{ sessionSummaryMessage }}
@@ -1219,9 +1225,12 @@ const sessionSummary = computed(() => {
 })
 
 const totalSessions = computed(() => sessionSummary.value?.total_session ?? null)
-const usedSessions = computed(() => sessionSummary.value?.used_session ?? null)
-const remainingSessions = computed(() => sessionSummary.value?.remaining_session ?? null)
-
+const createdSessions = computed(() => sessionSummary.value?.created_session ?? null)
+const scheduledSessions = computed(() => sessionSummary.value?.scheduled_session ?? null)
+const completedSessions = computed(() => sessionSummary.value?.completed_session ?? null)
+const availableToScheduleSessions = computed(
+  () => sessionSummary.value?.available_to_schedule ?? null,
+)
 const schedulingUnavailable = computed(
   () =>
     !sessionSummary.value ||
@@ -1254,19 +1263,6 @@ const sessionSummaryMessage = computed(() => {
   return ''
 })
 
-const totalCardColor = computed(() => '#F5F5F5')
-const usedCardColor = computed(() => '#E8F5E9')
-const remainingSessionState = computed(() => {
-  if (remainingSessions.value == null) return { color: '#F5F5F5', label: '' }
-  if (sessionSummary.value?.is_session_expired) return { color: '#FFEBEE', label: 'Expired' }
-  if (remainingSessions.value <= 0) {
-    return { color: '#FFEBEE', label: 'No sessions remaining' }
-  }
-  if (totalSessions.value > 0 && remainingSessions.value / totalSessions.value <= 0.2) {
-    return { color: '#FFF8E1', label: 'Running low' }
-  }
-  return { color: '#E3F2FD', label: 'Available' }
-})
 
 const fetchTherapySessionStatuses = async () => {
   const res = await api.get('/therapy-session-statuses')
@@ -1861,6 +1857,16 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summary-card {
+  min-width: 0;
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -1948,5 +1954,17 @@ onMounted(async () => {
 .multiple-session-table td {
   padding: 10px 8px;
   vertical-align: top;
+}
+
+@media (max-width: 960px) {
+  .summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 </style>

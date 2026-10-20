@@ -982,12 +982,20 @@ onMounted(fetchContext)
 }
 
 @media (max-width: 600px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-card {
+    min-height: 0;
+  }
+
   .summary-card :deep(.v-card-text) {
     padding: 12px 10px;
   }
 
   .summary-card__label {
-    min-height: 44px;
+    min-height: 0;
   }
 
   .school-schedule-page :deep(.v-card-title) {

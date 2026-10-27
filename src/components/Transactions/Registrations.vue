@@ -174,7 +174,9 @@
                       v-if="item.registration_status !== 'active'"
                       @click="updateRegistrationStatus(item, 'active')"
                     >
-                      <v-list-item-title>Set Active</v-list-item-title>
+                      <v-list-item-title>
+                        {{ item.registration_status === 'pending' ? 'Approve & Activate' : 'Set Active' }}
+                      </v-list-item-title>
                     </v-list-item>
 
                     <v-list-item
@@ -1216,15 +1218,17 @@ const getRegistrationStatusLabel = (registration) => {
   }
 
   const labels = {
+    pending: 'Pending',
     active: 'Active',
     inactive: 'Inactive',
     closed: 'Closed',
   }
 
-  return labels[registration?.registration_status] || 'Active'
+  return labels[registration?.registration_status] || 'Unknown'
 }
 
 const getRegistrationStatusColor = (status) => {
+  if (status === 'pending') return 'info'
   if (status === 'active') return 'success'
   if (status === 'inactive') return 'warning'
   if (status === 'closed') return 'error'

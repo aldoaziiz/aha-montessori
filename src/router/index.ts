@@ -231,6 +231,16 @@ const routes: RouteRecordRaw[] = [
       allowedRoles: ['admin'],
     },
   },
+  {
+    path: '/report/school-sessions',
+    name: 'report-school-sessions',
+    component: () => import('@/components/Report/SchoolSessionsReport.vue'),
+    meta: {
+      layout: 'app',
+      requiresAuth: true,
+      allowedRoles: ['admin'],
+    },
+  },
 
   // help support
   {

@@ -144,6 +144,13 @@
         /> -->
 
         <v-list-item
+          title="School Sessions"
+          to="/report/school-sessions"
+          :active="activeMenu === 'SchoolSessionsReport'"
+          @click="setActiveMenu('SchoolSessionsReport')"
+        ></v-list-item>
+
+        <v-list-item
           title="Monthly Overview"
           to="/report/monthly-overview"
           :active="activeMenu === 'MonthlyOverview'"

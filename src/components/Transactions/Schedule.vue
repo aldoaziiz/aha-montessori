@@ -398,34 +398,16 @@
       <div class="summary-grid mb-4">
         <v-card color="#F5F5F5" class="summary-card h-100 text-grey-darken-4">
           <v-card-text>
-            <div class="text-caption">Total Session</div>
+            <div class="text-caption">Total Sessions</div>
             <div class="text-h5 font-weight-bold">
               {{ totalSessions ?? '-' }}
             </div>
           </v-card-text>
         </v-card>
 
-        <v-card color="#FFF8E1" class="summary-card h-100 text-grey-darken-4">
-          <v-card-text>
-            <div class="text-caption">Created Session</div>
-            <div class="text-h5 font-weight-bold">
-              {{ createdSessions ?? '-' }}
-            </div>
-          </v-card-text>
-        </v-card>
-
-        <v-card color="#E3F2FD" class="summary-card h-100 text-grey-darken-4">
-          <v-card-text>
-            <div class="text-caption">Scheduled Session</div>
-            <div class="text-h5 font-weight-bold">
-              {{ scheduledSessions ?? '-' }}
-            </div>
-          </v-card-text>
-        </v-card>
-
         <v-card color="#E8F5E9" class="summary-card h-100 text-grey-darken-4">
           <v-card-text>
-            <div class="text-caption">Completed Session</div>
+            <div class="text-caption">Used Sessions</div>
             <div class="text-h5 font-weight-bold">
               {{ completedSessions ?? '-' }}
             </div>
@@ -434,9 +416,9 @@
 
         <v-card color="#E0F7FA" class="summary-card h-100 text-grey-darken-4">
           <v-card-text>
-            <div class="text-caption">Available to Schedule</div>
+            <div class="text-caption">Remaining Sessions</div>
             <div class="text-h5 font-weight-bold">
-              {{ availableToScheduleSessions ?? '-' }}
+              {{ remainingSessions ?? '-' }}
             </div>
           </v-card-text>
         </v-card>
@@ -1225,12 +1207,11 @@ const sessionSummary = computed(() => {
 })
 
 const totalSessions = computed(() => sessionSummary.value?.total_session ?? null)
-const createdSessions = computed(() => sessionSummary.value?.created_session ?? null)
-const scheduledSessions = computed(() => sessionSummary.value?.scheduled_session ?? null)
 const completedSessions = computed(() => sessionSummary.value?.completed_session ?? null)
-const availableToScheduleSessions = computed(
-  () => sessionSummary.value?.available_to_schedule ?? null,
-)
+const remainingSessions = computed(() => {
+  if (totalSessions.value == null || completedSessions.value == null) return null
+  return totalSessions.value - completedSessions.value
+})
 const schedulingUnavailable = computed(
   () =>
     !sessionSummary.value ||
@@ -1859,7 +1840,7 @@ onMounted(async () => {
 <style scoped>
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 

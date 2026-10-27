@@ -363,6 +363,8 @@ const showSnackbar = (text, color = 'success') => {
   snackbar.value = true
 }
 
+const toDateInputValue = (value) => (value ? String(value).slice(0, 10) : '')
+
 // ======================
 // GO BACK
 // ======================
@@ -410,9 +412,9 @@ const fetchChild = async () => {
 
       birth_date: res.data.birth_date || '',
 
-      session_started_at: res.data.session_started_at || '',
+      session_started_at: toDateInputValue(res.data.session_started_at),
 
-      session_expired_at: res.data.session_expired_at || '',
+      session_expired_at: toDateInputValue(res.data.session_expired_at),
 
       gender: res.data.gender || '',
 

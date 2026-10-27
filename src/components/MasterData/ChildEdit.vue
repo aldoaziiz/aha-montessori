@@ -59,6 +59,37 @@
             />
           </v-col>
 
+          <v-col cols="12">
+            <div class="text-subtitle-1 font-weight-bold mb-2">Session Validity</div>
+            <v-alert
+              v-if="!form.session_started_at || !form.session_expired_at"
+              type="warning"
+              variant="tonal"
+              density="compact"
+              class="mb-3"
+            >
+              Session validity belum diisi. Ini hanya peringatan dan tidak membatasi transaksi atau penjadwalan.
+            </v-alert>
+          </v-col>
+          <v-col cols="12" md="6">
+            <v-text-field
+              v-model="form.session_started_at"
+              label="Session Valid From"
+              type="date"
+              variant="outlined"
+              clearable
+            />
+          </v-col>
+          <v-col cols="12" md="6">
+            <v-text-field
+              v-model="form.session_expired_at"
+              label="Session Valid Until"
+              type="date"
+              variant="outlined"
+              clearable
+            />
+          </v-col>
+
           <!-- BIRTHPLACE -->
           <v-col cols="12" md="6">
             <v-autocomplete
@@ -318,6 +349,8 @@ const form = ref({
   school_id: null,
   school_class_id: null,
   school_education_id: null,
+  session_started_at: '',
+  session_expired_at: '',
 })
 
 // ======================
@@ -376,6 +409,10 @@ const fetchChild = async () => {
       nickname: res.data.nickname || '',
 
       birth_date: res.data.birth_date || '',
+
+      session_started_at: res.data.session_started_at || '',
+
+      session_expired_at: res.data.session_expired_at || '',
 
       gender: res.data.gender || '',
 

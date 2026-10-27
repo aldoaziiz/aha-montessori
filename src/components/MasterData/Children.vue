@@ -98,6 +98,20 @@
                 {{ item.program_category?.name || '-' }}
               </template>
 
+              <template v-slot:item.session_validity="{ item }">
+                <v-chip
+                  v-if="item.session_started_at && item.session_expired_at"
+                  size="small"
+                  color="success"
+                  variant="tonal"
+                >
+                  Set
+                </v-chip>
+                <v-chip v-else size="small" color="warning" variant="tonal">
+                  Belum diisi
+                </v-chip>
+              </template>
+
               <!-- ACTIONS -->
               <template v-slot:item.actions="{ item }">
                 <v-menu>
@@ -222,6 +236,16 @@
                 -
                 {{ calculateAgeDetail(selectedChild.birth_date) || '-' }}
               </div>
+            </v-col>
+
+            <v-col cols="12">
+              <div class="detail-label">Session Validity</div>
+              <div v-if="selectedChild.session_started_at && selectedChild.session_expired_at" class="detail-value">
+                {{ formatDate(selectedChild.session_started_at) }} – {{ formatDate(selectedChild.session_expired_at) }}
+              </div>
+              <v-alert v-else type="warning" variant="tonal" density="compact" class="mt-2">
+                Session validity belum diisi. Peringatan ini tidak membatasi transaksi atau penjadwalan.
+              </v-alert>
             </v-col>
 
             <!-- GUARDIANS -->
@@ -429,6 +453,7 @@ const headers = [
   { title: 'Birth Date', key: 'birth_date' },
   { title: 'Gender', key: 'gender' },
   { title: 'Enrollment Date', key: 'created_at' },
+  { title: 'Session Validity', key: 'session_validity', sortable: false },
   { title: 'Address', key: 'address' },
   { title: 'Status', key: 'status' },
   { title: '', key: 'actions', sortable: false, align: 'center' },

@@ -302,8 +302,6 @@
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model="form.start_date"
-                  :min="registration.session_started_at || undefined"
-                  :max="registration.session_expired_at || undefined"
                   label="Start Date"
                   type="date"
                   variant="outlined"
@@ -317,7 +315,6 @@
                   type="date"
                   variant="outlined"
                   :min="form.start_date || undefined"
-                  :max="registration.session_expired_at || undefined"
                   :rules="[
                     ...requiredRule,
                     (v) =>
@@ -625,8 +622,6 @@
       <v-card-text class="pt-4">
         <v-text-field
           v-model="sessionForm.therapy_date"
-          :min="registration.session_started_at || undefined"
-          :max="registration.session_expired_at || undefined"
           :disabled="schedulingUnavailable"
           type="date"
           label="Date"
@@ -692,8 +687,6 @@
                 <td>
                   <v-text-field
                     v-model="row.therapy_date"
-                    :min="registration.session_started_at || undefined"
-                    :max="registration.session_expired_at || undefined"
                     type="date"
                     variant="outlined"
                     density="compact"
@@ -1226,23 +1219,19 @@ const remainingSessions = computed(() => {
   return totalSessions.value - completedSessions.value
 })
 const schedulingUnavailable = computed(
-  () =>
-    !sessionSummary.value ||
-    !registration.value.session_started_at ||
-    !registration.value.session_expired_at ||
-    sessionSummary.value.is_session_expired,
+  () => !sessionSummary.value,
 )
 
 const sessionValidityMessage = computed(() => {
   if (sessionSummaryLoading.value || sessionSummaryError.value) return ''
   if (sessionSummary.value?.is_session_expired) {
-    return 'Sessions have expired. New sessions and rescheduling are no longer available. Session history is retained.'
+    return 'Session validity has passed. This is a warning only; scheduling and transactions remain available.'
   }
   if (
     registration.value?.id &&
     (!registration.value.session_started_at || !registration.value.session_expired_at)
   ) {
-    return 'Session validity dates have not been set. Scheduling will be available once these dates are set.'
+    return 'Session validity dates have not been set. This is a warning only; scheduling and transactions remain available.'
   }
   return ''
 })

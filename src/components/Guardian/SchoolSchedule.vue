@@ -444,31 +444,12 @@ const parseDate = (value) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
-const monthStart = (date) => new Date(date.getFullYear(), date.getMonth(), 1)
-
-const selectionBounds = computed(() => {
-  const startsAt = parseDate(selectedRegistration.value?.session_started_at)
-  const expiresAt = parseDate(selectedRegistration.value?.session_expired_at)
-
-  if (!startsAt || !expiresAt) return null
-
-  const start = monthStart(startsAt)
-  const end = monthStart(expiresAt)
-
-  if (start > end) return null
-
-  return { start, end }
-})
-
 const availableYears = computed(() => {
-  if (!selectionBounds.value) return []
+  if (!currentDate.value) return []
 
+  const currentYear = new Date(`${currentDate.value}T00:00:00`).getFullYear()
   const years = []
-  for (
-    let year = selectionBounds.value.start.getFullYear();
-    year <= selectionBounds.value.end.getFullYear();
-    year += 1
-  ) {
+  for (let year = currentYear - 10; year <= 2100; year += 1) {
     years.push(year)
   }
 
@@ -476,14 +457,10 @@ const availableYears = computed(() => {
 })
 
 const availableMonths = computed(() => {
-  if (!selectionBounds.value || !selectedYear.value) return []
+  if (!currentDate.value || !selectedYear.value) return []
 
   return monthNames
     .map((title, index) => ({ title, value: index + 1 }))
-    .filter(({ value }) => {
-      const date = new Date(selectedYear.value, value - 1, 1)
-      return date >= selectionBounds.value.start && date <= selectionBounds.value.end
-    })
 })
 
 
@@ -552,21 +529,17 @@ const registrationMessage = computed(() => {
     return 'This registration is closed. New scheduling is unavailable.'
   }
   if (!selectedRegistration.value.session_started_at || !selectedRegistration.value.session_expired_at) {
-    return 'Session validity dates have not been set for this registration.'
+    return 'Session validity belum diisi. Ini hanya peringatan; penjadwalan dan transaksi tetap bisa dilakukan.'
   }
   if (selectedRegistration.value.total_session == null) {
     return 'Session totals have not been set for this registration.'
   }
   if (selectedSummary.value?.is_session_expired) {
-    return 'Sessions for this registration have expired.'
+    return 'Session validity sudah lewat. Ini hanya peringatan; penjadwalan dan transaksi tetap bisa dilakukan.'
   }
   if (selectedSummary.value?.available_to_schedule <= 0) {
     return 'No sessions are available to schedule for this registration.'
   }
-  if (availableYears.value.length === 0) {
-    return 'No scheduling period is available for this registration.'
-  }
-
   return ''
 })
 

@@ -196,7 +196,11 @@
           type="warning"
           variant="tonal"
         >
-          {{ calendarData.unavailable_reason }}
+          {{
+            selectedMonthIsPast
+              ? 'Past months are view-only. You can review the schedule, but cannot create new sessions.'
+              : calendarData.unavailable_reason
+          }}
         </v-alert>
 
         <template v-else-if="calendarData?.can_schedule">
@@ -443,13 +447,12 @@ const parseDate = (value) => {
 const monthStart = (date) => new Date(date.getFullYear(), date.getMonth(), 1)
 
 const selectionBounds = computed(() => {
-  const today = parseDate(currentDate.value)
   const startsAt = parseDate(selectedRegistration.value?.session_started_at)
   const expiresAt = parseDate(selectedRegistration.value?.session_expired_at)
 
-  if (!today || !startsAt || !expiresAt) return null
+  if (!startsAt || !expiresAt) return null
 
-  const start = monthStart(startsAt > today ? startsAt : today)
+  const start = monthStart(startsAt)
   const end = monthStart(expiresAt)
 
   if (start > end) return null
@@ -507,6 +510,13 @@ const selectedDateDetails = computed(() =>
 const monthlySchedules = computed(() => calendarData.value?.scheduled_sessions ?? [])
 
 const selectedMonthName = computed(() => monthNames[(selectedMonth.value ?? 1) - 1])
+
+const selectedMonthIsPast = computed(() => {
+  const today = parseDate(currentDate.value)
+  if (!today || !selectedYear.value || !selectedMonth.value) return false
+
+  return new Date(selectedYear.value, selectedMonth.value - 1, 1) < monthStart(today)
+})
 
 const missingSessionCount = computed(() =>
   selectedDateDetails.value.filter((day) => !selectedSessionIds.value[day.date]).length,
@@ -694,8 +704,24 @@ const firstApiError = (error, fallback) => {
 }
 
 const resetSelectedPeriod = () => {
-  selectedYear.value = availableYears.value[0] ?? null
-  selectedMonth.value = availableMonths.value[0]?.value ?? null
+  const bounds = selectionBounds.value
+  const today = parseDate(currentDate.value)
+
+  if (!bounds || !today) {
+    selectedYear.value = null
+    selectedMonth.value = null
+    return
+  }
+
+  const currentMonth = monthStart(today)
+  const defaultMonth = currentMonth < bounds.start
+    ? bounds.start
+    : currentMonth > bounds.end
+      ? bounds.end
+      : currentMonth
+
+  selectedYear.value = defaultMonth.getFullYear()
+  selectedMonth.value = defaultMonth.getMonth() + 1
 }
 
 watch(selectedRegistrationId, resetSelectedPeriod)

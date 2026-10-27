@@ -80,6 +80,11 @@
                 </div>
               </template>
 
+              <!-- CHILD ID NUMBER -->
+              <template v-slot:item.child.id_number="{ item }">
+                {{ item.child?.id_number || '-' }}
+              </template>
+
               <!-- PROGRAM CATEGORY -->
               <template v-slot:item.program_category="{ item }">
                 {{ getProgramCategoryNames(item) }}
@@ -868,6 +873,11 @@ const headers = [
   {
     title: 'Child Name',
     key: 'child',
+  },
+
+  {
+    title: 'Child ID Number',
+    key: 'child.id_number',
   },
 
   {

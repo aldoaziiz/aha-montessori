@@ -50,6 +50,13 @@
             </v-col>
 
             <v-col cols="12" md="4">
+              <div class="text-caption text-grey">Child ID Number</div>
+              <div class="font-weight-medium">
+                {{ registration.child?.id_number || '-' }}
+              </div>
+            </v-col>
+
+            <v-col cols="12" md="4">
               <div class="text-caption text-grey">Child Birth Date</div>
               <div class="font-weight-medium">
                 {{ formatDate(registration.child?.birth_date) || '-' }}
@@ -83,6 +90,12 @@
                 </div>
                 <div class="text-caption text-grey">
                   {{ g.phone }}
+                </div>
+                <div class="text-caption text-grey">
+                  ID Number: {{ g.id_number || '-' }}
+                </div>
+                <div class="text-caption text-grey">
+                  Email: {{ g.email || '-' }}
                 </div>
               </div>
             </v-col>

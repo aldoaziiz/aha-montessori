@@ -130,34 +130,16 @@
           <div v-if="selectedSummary" class="summary-grid mt-2">
             <v-card color="#F5F5F5" class="summary-card text-grey-darken-4" flat>
               <v-card-text>
-                <div class="summary-card__label">Total Session</div>
+                <div class="summary-card__label">Total Sessions</div>
                 <div class="text-h5 font-weight-bold">
                   {{ selectedSummary.total_session }}
                 </div>
               </v-card-text>
             </v-card>
 
-            <v-card color="#FFF8E1" class="summary-card text-grey-darken-4" flat>
-              <v-card-text>
-                <div class="summary-card__label">Created Session</div>
-                <div class="text-h5 font-weight-bold">
-                  {{ selectedSummary.created_session ?? '-' }}
-                </div>
-              </v-card-text>
-            </v-card>
-
-            <v-card color="#E3F2FD" class="summary-card text-grey-darken-4" flat>
-              <v-card-text>
-                <div class="summary-card__label">Scheduled Session</div>
-                <div class="text-h5 font-weight-bold">
-                  {{ selectedSummary.scheduled_session ?? '-' }}
-                </div>
-              </v-card-text>
-            </v-card>
-
             <v-card color="#E8F5E9" class="summary-card text-grey-darken-4" flat>
               <v-card-text>
-                <div class="summary-card__label">Completed Session</div>
+                <div class="summary-card__label">Used Sessions</div>
                 <div class="text-h5 font-weight-bold">
                   {{ selectedSummary.completed_session ?? '-' }}
                 </div>
@@ -166,9 +148,9 @@
 
             <v-card color="#E0F7FA" class="summary-card text-grey-darken-4" flat>
               <v-card-text>
-                <div class="summary-card__label">Available to Schedule</div>
+                <div class="summary-card__label">Remaining Sessions</div>
                 <div class="text-h5 font-weight-bold">
-                  {{ selectedSummary.available_to_schedule ?? '-' }}
+                  {{ remainingSessions ?? '-' }}
                 </div>
               </v-card-text>
             </v-card>
@@ -440,6 +422,15 @@ const selectedSummary = computed(() => {
   if (selectedRegistration.value?.total_session == null) return null
 
   return selectedRegistration.value.session_summary ?? null
+})
+
+const remainingSessions = computed(() => {
+  const total = selectedSummary.value?.total_session
+  const completed = selectedSummary.value?.completed_session
+
+  if (total == null || completed == null) return null
+
+  return Number(total) - Number(completed)
 })
 
 const parseDate = (value) => {
@@ -857,7 +848,7 @@ onMounted(fetchContext)
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 .summary-card {

@@ -72,6 +72,12 @@
         <template #item.program_category="{ item }">
           {{ item.program_category || '—' }}
         </template>
+        <template #item.session_started_at="{ item }">
+          {{ item.session_started_at || '—' }}
+        </template>
+        <template #item.session_expired_at="{ item }">
+          {{ item.session_expired_at || '—' }}
+        </template>
         <template #no-data>
           <div class="text-center py-10">
             <v-icon icon="mdi-school-outline" size="48" class="mb-3" />
@@ -104,6 +110,8 @@ interface SchoolSessionRow {
   id_number: string | null
   child_name: string
   program_category: string
+  session_started_at: string | null
+  session_expired_at: string | null
   total_sessions: number
   used_sessions: number
   remaining_sessions: number
@@ -113,6 +121,8 @@ const headers = [
   { title: 'ID Number', key: 'id_number' },
   { title: 'Child Name', key: 'child_name' },
   { title: 'Program Category', key: 'program_category' },
+  { title: 'Enrollment date', key: 'session_started_at' },
+  { title: 'Sessions expired date', key: 'session_expired_at' },
   { title: 'Total Sessions', key: 'total_sessions', align: 'end' as const },
   { title: 'Used Sessions', key: 'used_sessions', align: 'end' as const },
   { title: 'Remaining Sessions', key: 'remaining_sessions', align: 'end' as const },

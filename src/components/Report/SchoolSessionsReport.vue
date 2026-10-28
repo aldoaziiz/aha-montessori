@@ -73,10 +73,10 @@
           {{ item.program_category || '—' }}
         </template>
         <template #item.session_started_at="{ item }">
-          {{ item.session_started_at || '—' }}
+          {{ formatDate(item.session_started_at) }}
         </template>
         <template #item.session_expired_at="{ item }">
-          {{ item.session_expired_at || '—' }}
+          {{ formatDate(item.session_expired_at) }}
         </template>
         <template #no-data>
           <div class="text-center py-10">
@@ -127,6 +127,20 @@ const headers = [
   { title: 'Used Sessions', key: 'used_sessions', align: 'end' as const },
   { title: 'Remaining Sessions', key: 'remaining_sessions', align: 'end' as const },
 ]
+
+function formatDate(value: string | null): string {
+  if (!value) return '—'
+
+  const date = new Date(`${value}T00:00:00Z`)
+  if (Number.isNaN(date.getTime())) return value
+
+  return new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(date)
+}
 
 const filters = reactive({
   programCategoryId: null as number | null,

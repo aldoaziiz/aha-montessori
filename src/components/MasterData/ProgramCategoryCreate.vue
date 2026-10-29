@@ -23,13 +23,24 @@
           :error-messages="errors.name"
         />
 
-        <div class="d-flex justify-space-between align-center mb-4">
+        <v-switch
+          v-model="form.supports_tracks"
+          label="Use subject-based tracks and class-specific session slots"
+          color="primary"
+          inset
+          class="mb-3"
+        />
+        <v-alert v-if="form.supports_tracks" type="info" variant="tonal" class="mb-6">
+          Add subjects, Regular/Private modes, classes and their session times after saving this category.
+        </v-alert>
+
+        <div v-if="!form.supports_tracks" class="d-flex justify-space-between align-center mb-4">
           <h3 class="text-h6">Session Schedules</h3>
 
           <v-btn color="primary" prepend-icon="mdi-plus" @click="addSession">Add Session</v-btn>
         </div>
 
-        <v-table density="comfortable">
+        <v-table v-if="!form.supports_tracks" density="comfortable">
           <thead>
             <tr>
               <th width="100">Order No.</th>
@@ -165,6 +176,7 @@ const leaveDialog = ref(false)
 
 const form = ref({
   name: '',
+  supports_tracks: false,
 })
 
 const sessions = ref([
@@ -206,7 +218,7 @@ const validateForm = () => {
     errors.value.name = ['Category name is required.']
   }
 
-  sessions.value.forEach((session, index) => {
+  if (!form.value.supports_tracks) sessions.value.forEach((session, index) => {
     if (!session.session_order) {
       errors.value[`sessions.${index}.session_order`] = ['Required']
     }
@@ -241,12 +253,17 @@ const saveCategory = async () => {
   try {
     const payload = {
       name: form.value.name,
-      sessions: sessions.value,
+      supports_tracks: form.value.supports_tracks,
+      sessions: form.value.supports_tracks ? [] : sessions.value,
     }
 
-    await api.post('/program-categories', payload)
+    const response = await api.post('/program-categories', payload)
 
-    router.push('/program-categories')
+    if (form.value.supports_tracks) {
+      router.push(`/program-categories/${response.data.data.id}/tracks`)
+    } else {
+      router.push('/program-categories')
+    }
   } catch (err) {
     if (err.response?.status === 422) {
       errors.value = err.response.data.errors ?? {}

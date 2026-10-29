@@ -12,12 +12,7 @@
     </v-row>
 
     <v-row justify="end" class="activity-new-post-row">
-      <v-btn
-        v-if="canManageActivity"
-        color="primary"
-        prepend-icon="mdi-plus"
-        to="/activity/create"
-      >
+      <v-btn v-if="canManageActivity" color="primary" prepend-icon="mdi-plus" to="/activity/create">
         New Post
       </v-btn>
     </v-row>

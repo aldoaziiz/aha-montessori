@@ -102,7 +102,15 @@
             </v-col>
 
             <!-- PROGRAMS -->
-            <v-col cols="12" md="6">
+            <v-col v-if="selectedProgramCategory?.supports_tracks" cols="12">
+              <SchoolReadinessProgramSelector
+                v-model="form.program_selections"
+                :programs="filteredPrograms"
+                :disabled="isLocked"
+              />
+            </v-col>
+
+            <v-col v-else cols="12" md="6">
               <v-autocomplete
                 v-model="form.program_ids"
                 :items="filteredPrograms"
@@ -137,7 +145,7 @@
               />
             </v-col>
 
-            <v-col cols="12" md="6">
+            <v-col v-if="!selectedProgramCategory?.supports_tracks" cols="12" md="6">
               <v-select
                 v-model="form.program_duration_months"
                 label="Learning Period"
@@ -189,6 +197,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
+import SchoolReadinessProgramSelector from '@/components/Admissions/SchoolReadinessProgramSelector.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -207,10 +216,12 @@ const payers = ref([])
 const onClinicChange = () => {
   form.value.program_category_id = null
   form.value.program_ids = []
+  form.value.program_selections = []
 }
 
 const onCategoryChange = () => {
   form.value.program_ids = []
+  form.value.program_selections = []
 }
 
 const isLocked = computed(() => {
@@ -225,6 +236,7 @@ const form = ref({
   clinic_id: null,
   program_category_id: null,
   program_ids: [],
+  program_selections: [],
   payer_id: null,
   program_duration_months: 6,
 })
@@ -236,6 +248,18 @@ const filteredPrograms = computed(() => {
       Number(program.program_category_id) === Number(form.value.program_category_id),
   )
 })
+
+const selectedProgramCategory = computed(() =>
+  programCategories.value.find(
+    (category) => Number(category.id) === Number(form.value.program_category_id),
+  ),
+)
+
+const hasSelectedSchoolReadinessSubject = () =>
+  form.value.program_selections.some((selection) => {
+    const program = filteredPrograms.value.find((item) => Number(item.id) === Number(selection.program_id))
+    return Boolean(program?.track && !program.is_registration_fee)
+  })
 
 const showSnackbar = (text, color = 'success') => {
   snackbarText.value = text
@@ -287,7 +311,12 @@ const fetchMasterData = async () => {
 
       program_ids: registration.program_ids ?? [],
 
-      program_duration_months: registration.program_duration_months ?? 6,
+      program_selections: (registration.program_selections ?? []).map((selection) => ({
+        program_id: selection.program_id,
+        learning_period_months: Number(selection.learning_period_months || 1),
+      })),
+
+      program_duration_months: registration.program_duration_months ?? 1,
     }
   } catch (err) {
     console.error('Error loading registration:', err)
@@ -311,13 +340,20 @@ const updateRegistration = async () => {
   loading.value = true
 
   try {
+    const isTrackBased = selectedProgramCategory.value?.supports_tracks
+    if (isTrackBased && !hasSelectedSchoolReadinessSubject()) {
+      showSnackbar('Choose at least one School Readiness subject package.', 'error')
+      return
+    }
+
     await api.put(`/registrations/${route.params.id}`, {
       clinic_id: form.value.clinic_id,
       program_category_id: form.value.program_category_id,
-      program_ids: form.value.program_ids,
+      program_ids: isTrackBased ? undefined : form.value.program_ids,
+      program_selections: isTrackBased ? form.value.program_selections : undefined,
       payer_id: form.value.payer_id,
       complaint: form.value.complaint,
-      program_duration_months: form.value.program_duration_months,
+      program_duration_months: isTrackBased ? undefined : form.value.program_duration_months,
     })
 
     showSnackbar('Registration updated successfully')

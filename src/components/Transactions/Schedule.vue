@@ -71,6 +71,13 @@
             </v-col>
 
             <v-col cols="12" md="4">
+              <div class="text-caption text-grey">Program Category</div>
+              <div class="font-weight-medium">
+                {{ registration.program_category?.name || registration.programs?.[0]?.program_category?.name || '-' }}
+              </div>
+            </v-col>
+
+            <v-col cols="12" md="4">
               <div class="text-caption text-grey">Program</div>
               <div v-for="program in registration.programs || []" :key="program.id">
                 • {{ program.name }}
@@ -131,6 +138,18 @@
               />
             </v-col>
 
+            <v-col cols="12" md="4">
+              <v-select
+                v-model="selectedAvailabilityCategory"
+                :items="availabilityCategoryOptions"
+                item-title="title"
+                item-value="value"
+                label="Program Category"
+                density="compact"
+                hide-details
+              />
+            </v-col>
+
             <v-col cols="12" md="2">
               <v-btn color="primary" block @click="applyAvailabilityFilter">Apply</v-btn>
             </v-col>
@@ -139,7 +158,91 @@
 
         <v-progress-linear v-if="availabilityLoading" indeterminate color="primary" />
 
-        <v-card-text class="pa-0">
+        <v-card-text v-if="isTrackAvailabilityView" class="pa-4 track-availability-card-text">
+          <v-row class="mb-2">
+            <v-col cols="12" sm="4">
+              <v-select
+                v-model="trackAvailabilityFilters.subject"
+                :items="trackAvailabilitySubjectOptions"
+                label="Filter Subject"
+                clearable
+                density="compact"
+                hide-details
+              />
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-select
+                v-model="trackAvailabilityFilters.mode"
+                :items="trackAvailabilityModeOptions"
+                label="Filter Mode"
+                clearable
+                density="compact"
+                hide-details
+              />
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-select
+                v-model="trackAvailabilityFilters.classCode"
+                :items="trackAvailabilityClassOptions"
+                label="Filter Class"
+                clearable
+                density="compact"
+                hide-details
+              />
+            </v-col>
+          </v-row>
+
+          <div class="track-availability-table-wrapper">
+            <v-data-table
+              :headers="trackAvailabilityHeaders"
+              :items="trackAvailabilityRows"
+              :loading="availabilityLoading || trackAvailabilityLoading"
+              :items-per-page="25"
+              density="comfortable"
+              class="track-availability-table"
+            >
+              <template #item.mode_class="{ item }">
+                {{ formatDeliveryMode(item.delivery_mode) }} · Class {{ item.class_code }}
+              </template>
+              <template #item.time_range="{ item }">
+                {{ item.start_time }}–{{ item.end_time }}
+              </template>
+              <template #item.occupancy="{ item }">
+                {{ item.occupied }} / {{ item.capacity }}
+              </template>
+              <template #item.available="{ item }">
+                <v-chip
+                  :color="item.available > 0 ? 'success' : 'error'"
+                  variant="tonal"
+                  size="small"
+                >
+                  {{ item.available }}
+                </v-chip>
+              </template>
+              <template #item.children="{ item }">
+                <span v-if="item.children.length">{{ item.children.join(', ') }}</span>
+                <span v-else class="text-medium-emphasis">—</span>
+              </template>
+              <template #no-data>
+                <div class="pa-6 text-center text-medium-emphasis">
+                  <span v-if="!appliedAvailabilityFilter.start_date || !appliedAvailabilityFilter.end_date">
+                    Select a date range above and click Apply to display session slots.
+                  </span>
+                  <span v-else>
+                    No active session slots found for this program category in this date range.
+                  </span>
+                </div>
+              </template>
+            </v-data-table>
+          </div>
+
+          <div class="d-flex ga-4 pt-4 flex-wrap text-body-2">
+            <div>Occupied / Capacity shows booked seats.</div>
+            <div>Available shows remaining seats in that slot.</div>
+          </div>
+        </v-card-text>
+
+        <v-card-text v-else class="pa-0">
           <div class="schedule-wrapper">
             <!-- HEADER -->
             <table class="schedule-grid schedule-header">
@@ -291,7 +394,7 @@
       </v-card>
 
       <!-- FORM -->
-      <v-card elevation="1" class="mb-4 rounded-lg">
+      <v-card v-if="!isTrackBasedRegistration" elevation="1" class="mb-4 rounded-lg">
         <v-card-title>Generate Sessions</v-card-title>
         <v-divider></v-divider>
 
@@ -331,19 +434,50 @@
               <!-- weekly schedule -->
               <v-col cols="12">
                 <div class="overflow-x-auto">
-                  <v-table density="comfortable" class="schedule-table">
+                  <div v-if="isTrackBasedRegistration" class="d-flex justify-end mb-3">
+                    <v-btn
+                      color="primary"
+                      variant="tonal"
+                      prepend-icon="mdi-plus"
+                      :disabled="form.schedule_configs.length >= 42"
+                      @click="addWeeklyScheduleRow"
+                    >
+                      Add Weekly Session
+                    </v-btn>
+                  </div>
+                  <v-table
+                    density="comfortable"
+                    class="schedule-table"
+                    :class="{ 'schedule-table--track-based': isTrackBasedRegistration }"
+                  >
                     <thead>
                       <tr>
-                        <th style="width: 10%">Day</th>
-                        <th style="width: 10%">Enable</th>
-                        <th style="width: 30%">Session Time</th>
+                        <th class="schedule-day-column">Day</th>
+                        <th class="schedule-enable-column">Enable</th>
+                        <th class="schedule-time-column">Session Time</th>
+                        <th v-if="isTrackBasedRegistration" class="schedule-action-column text-center">
+                          Action
+                        </th>
                       </tr>
                     </thead>
 
                     <tbody>
-                      <tr v-for="schedule in form.schedule_configs" :key="schedule.day">
+                      <tr v-for="(schedule, index) in form.schedule_configs" :key="schedule.key">
                         <td>
-                          {{ weekDays.find((d) => d.day === schedule.day)?.label }}
+                          <v-select
+                            v-if="isTrackBasedRegistration"
+                            v-model="schedule.day"
+                            :items="weekDays"
+                            item-title="label"
+                            item-value="day"
+                            variant="outlined"
+                            density="compact"
+                            hide-details
+                            :disabled="!schedule.enabled"
+                          />
+                          <span v-else>
+                            {{ weekDays.find((d) => d.day === schedule.day)?.label }}
+                          </span>
                         </td>
 
                         <td class="text-center">
@@ -360,6 +494,16 @@
                             density="comfortable"
                             hide-details
                             :disabled="!schedule.enabled"
+                          />
+                        </td>
+                        <td v-if="isTrackBasedRegistration" class="text-center">
+                          <v-btn
+                            v-if="index >= 5"
+                            icon="mdi-delete"
+                            variant="text"
+                            color="error"
+                            size="small"
+                            @click="removeWeeklyScheduleRow(index)"
                           />
                         </td>
                       </tr>
@@ -434,6 +578,53 @@
         </v-card>
       </div>
 
+      <v-card v-if="isTrackBasedRegistration" elevation="1" class="rounded-lg mb-4">
+        <v-card-title>School Readiness Package Summary</v-card-title>
+        <v-card-subtitle>
+          Quota is tracked separately for each selected subject and delivery mode.
+        </v-card-subtitle>
+        <v-card-text class="pa-0">
+          <div class="package-summary-table-wrapper">
+            <v-table density="comfortable" class="package-summary-table">
+              <thead>
+                <tr>
+                  <th>Subject / Mode</th>
+                  <th>Total Package</th>
+                  <th>Scheduled / Reserved</th>
+                  <th>Completed / Used</th>
+                  <th>Available to Schedule</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in schoolReadinessPackageSummaries" :key="item.registration_program_id">
+                  <td>
+                    <div class="font-weight-medium">
+                      {{ item.subject_name }} · {{ formatDeliveryMode(item.delivery_mode) }}
+                    </div>
+                    <div class="text-caption text-medium-emphasis">
+                      {{ item.sessions_per_month }} sessions/month ×
+                      {{ item.learning_period_months }} month(s)
+                    </div>
+                  </td>
+                  <td>{{ item.total_sessions }}</td>
+                  <td>{{ item.scheduled_reserved_sessions }}</td>
+                  <td>{{ item.completed_used_sessions }}</td>
+                  <td class="font-weight-bold">{{ item.available_to_schedule }}</td>
+                </tr>
+                <tr v-if="schoolReadinessPackageSummaries.length === 0">
+                  <td colspan="5" class="text-center text-medium-emphasis py-5">
+                    No School Readiness subject packages are linked to this registration.
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+          </div>
+        </v-card-text>
+        <v-card-text class="text-caption text-medium-emphasis pt-2">
+          Scheduled sessions reserve quota. Completed / Used counts sessions that consume a package session.
+        </v-card-text>
+      </v-card>
+
       <v-alert v-if="sessionSummaryMessage" type="info" variant="tonal" class="mb-4">
         {{ sessionSummaryMessage }}
       </v-alert>
@@ -503,6 +694,16 @@
           <!-- DATE -->
           <template #item.therapy_date="{ item }">
             {{ formatLongDate(item.therapy_date) }}
+          </template>
+
+          <!-- SCHOOL READINESS SESSION DETAILS -->
+          <template #item.session_details="{ item }">
+            <div class="track-session-details">
+              <div class="font-weight-medium">
+                {{ item.track_subject_name }} · {{ formatDeliveryMode(item.track_delivery_mode) }} · Class {{ item.track_class_code }}
+              </div>
+              <div class="text-caption">{{ item.session_name }}</div>
+            </div>
           </template>
 
           <!-- START -->
@@ -632,7 +833,7 @@
         <v-select
           v-model="sessionForm.session_time_id"
           :disabled="schedulingUnavailable"
-          :items="programCategorySessionTimes"
+          :items="availableTimeSlots"
           item-title="label"
           item-value="id"
           label="Session Time"
@@ -697,7 +898,7 @@
                 <td>
                   <v-select
                     v-model="row.session_time_id"
-                    :items="programCategorySessionTimes"
+                    :items="availableTimeSlots"
                     item-title="label"
                     item-value="id"
                     variant="outlined"
@@ -908,6 +1109,15 @@ const multipleSessionDialog = ref(false)
 const editingSessionId = ref(null)
 const conflictDialog = ref(false)
 const availabilityGrid = ref([])
+const trackAvailabilityCategories = ref([])
+const trackAvailabilitySessionTimes = ref([])
+const trackAvailabilityLoading = ref(false)
+const selectedAvailabilityCategory = ref('classic')
+const trackAvailabilityFilters = ref({
+  subject: null,
+  mode: null,
+  classCode: null,
+})
 const conflictSchedules = ref([])
 const therapySessionStatuses = ref([])
 const programCategorySessionTimes = ref([])
@@ -927,6 +1137,17 @@ const dayOptions = [
   { title: 'Wednesday', value: 3 },
   { title: 'Thursday', value: 4 },
   { title: 'Friday', value: 5 },
+]
+
+const trackAvailabilityHeaders = [
+  { title: 'Date', key: 'display_date' },
+  { title: 'Subject', key: 'subject_name' },
+  { title: 'Mode / Class', key: 'mode_class' },
+  { title: 'Session', key: 'session_name' },
+  { title: 'Time', key: 'time_range' },
+  { title: 'Occupied / Capacity', key: 'occupancy' },
+  { title: 'Available', key: 'available' },
+  { title: 'Children', key: 'children', sortable: false },
 ]
 
 const statusOptions = computed(() => [
@@ -1016,6 +1237,55 @@ const programCategoryId = computed(() => {
   return registration.value?.programs?.[0]?.program_category?.id ?? null
 })
 
+const isTrackBasedRegistration = computed(() =>
+  registration.value?.programs?.some((program) => program.program_category?.supports_tracks),
+)
+
+const registrationProgramForSessionTime = (sessionTime) => {
+  const trackId = Number(sessionTime?.track?.id)
+  if (!trackId) return null
+
+  return (
+    registration.value?.programs?.find(
+      (program) => Number(program.program_track_id) === trackId,
+    ) ?? null
+  )
+}
+
+const schoolReadinessPackageSummaries = computed(() => {
+  const packages = (registration.value?.programs ?? []).filter(
+    (program) => program.track && !program.is_registration_fee,
+  )
+
+  return packages.map((program) => {
+    const registrationProgramId = Number(program.registration_program_id)
+    const packageSessions = sessions.value.filter(
+      (session) => Number(session.registration_program_id) === registrationProgramId,
+    )
+    const countedSessions = packageSessions.filter(
+      (session) => Boolean(session.uses_session)
+        || Number(session.therapy_session_status_id) === 1,
+    ).length
+    const completedUsedSessions = packageSessions.filter(
+      (session) => Boolean(session.uses_session),
+    ).length
+    const totalSessions = Number(program.session_count ?? 0)
+      * Number(program.learning_period_months ?? 1)
+
+    return {
+      registration_program_id: registrationProgramId,
+      subject_name: program.track.subject_name,
+      delivery_mode: program.track.delivery_mode,
+      sessions_per_month: Number(program.session_count ?? 0),
+      learning_period_months: Number(program.learning_period_months ?? 1),
+      total_sessions: totalSessions,
+      scheduled_reserved_sessions: Math.max(countedSessions - completedUsedSessions, 0),
+      completed_used_sessions: completedUsedSessions,
+      available_to_schedule: Math.max(totalSessions - countedSessions, 0),
+    }
+  })
+})
+
 const filteredSessions = computed(() => {
   let data = [...sessions.value]
 
@@ -1040,6 +1310,103 @@ const appliedAvailabilityFilter = ref({
   start_date: '',
   end_date: '',
   therapist_id: null,
+})
+
+const formatDeliveryMode = (mode) => {
+  if (!mode) return ''
+  return String(mode).charAt(0).toUpperCase() + String(mode).slice(1)
+}
+
+const availabilityCategoryOptions = computed(() => [
+  { title: 'Toddler & Kinder', value: 'classic' },
+  ...trackAvailabilityCategories.value.map((category) => ({
+    title: category.name,
+    value: Number(category.id),
+  })),
+])
+
+const isTrackAvailabilityView = computed(() => selectedAvailabilityCategory.value !== 'classic')
+
+const selectedTrackAvailabilityCategory = computed(() =>
+  trackAvailabilityCategories.value.find(
+    (category) => Number(category.id) === Number(selectedAvailabilityCategory.value),
+  ) ?? null,
+)
+
+const activeTrackAvailabilitySlots = computed(() =>
+  trackAvailabilitySessionTimes.value.filter(
+    (slot) => slot.is_active && slot.track?.is_active && slot.track?.class_is_active,
+  ),
+)
+
+const trackAvailabilitySubjectOptions = computed(() =>
+  [...new Set(activeTrackAvailabilitySlots.value.map((slot) => slot.track?.subject_name).filter(Boolean))].sort(),
+)
+
+const trackAvailabilityModeOptions = computed(() =>
+  [...new Set(activeTrackAvailabilitySlots.value.map((slot) => slot.track?.delivery_mode).filter(Boolean))]
+    .sort()
+    .map((mode) => ({ title: formatDeliveryMode(mode), value: mode })),
+)
+
+const trackAvailabilityClassOptions = computed(() =>
+  [...new Set(activeTrackAvailabilitySlots.value.map((slot) => slot.track?.class_code).filter(Boolean))].sort(),
+)
+
+const trackAvailabilityRows = computed(() => {
+  const categoryName = selectedTrackAvailabilityCategory.value?.name
+  const startDate = appliedAvailabilityFilter.value.start_date
+  const endDate = appliedAvailabilityFilter.value.end_date
+  if (!categoryName || !startDate || !endDate) return []
+
+  const occupancyBySlotAndDate = new Map()
+  availabilityGrid.value.forEach((session) => {
+    const slotId = Number(session.program_category_session_time_id)
+    if (!slotId || session.program_category !== categoryName) return
+
+    const key = `${session.therapy_date}|${slotId}`
+    const occupancy = occupancyBySlotAndDate.get(key) ?? { count: 0, children: [] }
+    occupancy.count += 1
+    if (session.child_name) occupancy.children.push(session.child_name)
+    occupancyBySlotAndDate.set(key, occupancy)
+  })
+
+  const dates = dateKeysBetween(startDate, endDate)
+  const rows = []
+
+  dates.forEach((date) => {
+    activeTrackAvailabilitySlots.value.forEach((slot) => {
+      const track = slot.track
+      if (trackAvailabilityFilters.value.subject && track.subject_name !== trackAvailabilityFilters.value.subject) return
+      if (trackAvailabilityFilters.value.mode && track.delivery_mode !== trackAvailabilityFilters.value.mode) return
+      if (trackAvailabilityFilters.value.classCode && track.class_code !== trackAvailabilityFilters.value.classCode) return
+
+      const occupancy = occupancyBySlotAndDate.get(`${date}|${slot.id}`) ?? { count: 0, children: [] }
+      const capacity = Number(slot.capacity ?? 0)
+      rows.push({
+        id: `${date}-${slot.id}`,
+        date,
+        display_date: formatAvailabilityDate(date),
+        subject_name: track.subject_name,
+        delivery_mode: track.delivery_mode,
+        class_code: track.class_code,
+        session_name: slot.session_name,
+        start_time: slot.start_time,
+        end_time: slot.end_time,
+        time_range: `${slot.start_time}–${slot.end_time}`,
+        capacity,
+        occupied: occupancy.count,
+        available: Math.max(capacity - occupancy.count, 0),
+        children: occupancy.children,
+      })
+    })
+  })
+
+  return rows.sort((left, right) =>
+    left.date.localeCompare(right.date)
+    || left.start_time.localeCompare(right.start_time)
+    || left.subject_name.localeCompare(right.subject_name),
+  )
 })
 
 const closeSessionDialog = () => {
@@ -1072,6 +1439,9 @@ const buildMultipleSessionPayload = () => ({
   sessions: multipleSessionRows.value.map((row) => ({
     therapy_date: row.therapy_date,
     session_time_id: row.session_time_id,
+    registration_program_id: registrationProgramForSessionTime(
+      getSessionTimeById(row.session_time_id),
+    )?.registration_program_id,
     notes: row.notes,
   })),
 })
@@ -1114,6 +1484,21 @@ const removeMultipleSessionRow = (index) => {
 
 const availableTimeSlots = computed(() => {
   return programCategorySessionTimes.value
+    .filter((sessionTime) => {
+      if (!isTrackBasedRegistration.value) return true
+      return (
+        sessionTime.is_active &&
+        sessionTime.track?.is_active &&
+        sessionTime.track?.class_is_active &&
+        registrationProgramForSessionTime(sessionTime)
+      )
+    })
+    .map((sessionTime) => ({
+      ...sessionTime,
+      label: sessionTime.track
+        ? `${sessionTime.track.subject_name} · ${sessionTime.track.delivery_mode} · Class ${sessionTime.track.class_code} · ${sessionTime.session_name} (${sessionTime.start_time} - ${sessionTime.end_time})`
+        : sessionTime.label,
+    }))
 })
 
 const goBack = () => {
@@ -1128,26 +1513,31 @@ const form = ref({
   notes: '',
   schedule_configs: [
     {
+      key: 'weekday-1',
       day: 1,
       enabled: false,
       session_time_id: null,
     },
     {
+      key: 'weekday-2',
       day: 2,
       enabled: false,
       session_time_id: null,
     },
     {
+      key: 'weekday-3',
       day: 3,
       enabled: false,
       session_time_id: null,
     },
     {
+      key: 'weekday-4',
       day: 4,
       enabled: false,
       session_time_id: null,
     },
     {
+      key: 'weekday-5',
       day: 5,
       enabled: false,
       session_time_id: null,
@@ -1178,26 +1568,56 @@ const weekDays = [
   },
 ]
 
-const headers = [
-  { title: 'Day', key: 'day' },
-  { title: 'Date', key: 'therapy_date' },
-  { title: 'Start', key: 'start_time' },
-  { title: 'End', key: 'end_time' },
-  { title: 'Session Status', key: 'status' },
-  {
-    title: 'Attendance',
-    key: 'attendance',
-    sortable: false,
-    align: 'center',
-  },
-  { title: 'Notes', key: 'notes' },
-  {
-    title: '',
-    key: 'actions',
-    sortable: false,
-    align: 'center',
-  },
-]
+const addWeeklyScheduleRow = () => {
+  form.value.schedule_configs.push({
+    key: `extra-${Date.now()}-${Math.random()}`,
+    day: 1,
+    enabled: true,
+    session_time_id: null,
+  })
+}
+
+const removeWeeklyScheduleRow = (index) => {
+  if (index < 5) return
+  form.value.schedule_configs.splice(index, 1)
+}
+
+const headers = computed(() => {
+  const columns = [
+    { title: 'Day', key: 'day' },
+    { title: 'Date', key: 'therapy_date' },
+  ]
+
+  if (isTrackBasedRegistration.value) {
+    columns.push({
+      title: 'Session',
+      key: 'session_details',
+      sortable: false,
+      width: '240px',
+    })
+  }
+
+  columns.push(
+    { title: 'Start', key: 'start_time' },
+    { title: 'End', key: 'end_time' },
+    { title: 'Session Status', key: 'status' },
+    {
+      title: 'Attendance',
+      key: 'attendance',
+      sortable: false,
+      align: 'center',
+    },
+    { title: 'Notes', key: 'notes' },
+    {
+      title: '',
+      key: 'actions',
+      sortable: false,
+      align: 'center',
+    },
+  )
+
+  return columns
+})
 
 const sessionSummaryLoading = ref(false)
 const sessionSummaryError = ref(false)
@@ -1329,6 +1749,68 @@ const fetchAvailability = async () => {
     availabilityLoading.value = false
   }
 }
+
+const fetchTrackAvailabilityCategories = async () => {
+  try {
+    const response = await api.get('/program-categories')
+    trackAvailabilityCategories.value = (response.data.data ?? []).filter(
+      (category) => category.supports_tracks,
+    )
+  } catch (err) {
+    console.error('Error loading track-based program categories:', err)
+  }
+}
+
+const fetchTrackAvailabilitySessionTimes = async (categoryId) => {
+  trackAvailabilityLoading.value = true
+  trackAvailabilitySessionTimes.value = []
+
+  try {
+    const response = await api.get(`/program-categories/${categoryId}/session-times`)
+    trackAvailabilitySessionTimes.value = response.data.data ?? []
+  } catch (err) {
+    console.error('Error loading track-based session slots:', err)
+  } finally {
+    trackAvailabilityLoading.value = false
+  }
+}
+
+const dateKeysBetween = (startDate, endDate) => {
+  const current = new Date(`${startDate}T12:00:00`)
+  const end = new Date(`${endDate}T12:00:00`)
+  if (Number.isNaN(current.getTime()) || Number.isNaN(end.getTime())) return []
+
+  const dates = []
+  while (current <= end) {
+    dates.push([
+      current.getFullYear(),
+      String(current.getMonth() + 1).padStart(2, '0'),
+      String(current.getDate()).padStart(2, '0'),
+    ].join('-'))
+    current.setDate(current.getDate() + 1)
+  }
+  return dates
+}
+
+const formatAvailabilityDate = (date) =>
+  new Date(`${date}T12:00:00`).toLocaleDateString('en-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+
+watch(selectedAvailabilityCategory, async (categoryId) => {
+  trackAvailabilityFilters.value = { subject: null, mode: null, classCode: null }
+  trackAvailabilitySessionTimes.value = []
+
+  if (categoryId !== 'classic' && categoryId != null) {
+    await fetchTrackAvailabilitySessionTimes(Number(categoryId))
+  }
+
+  if (availabilityFilter.value.start_date && availabilityFilter.value.end_date) {
+    await applyAvailabilityFilter()
+  }
+})
 
 const getChildren = (date, category, startTime) => {
   return availabilityGrid.value
@@ -1488,6 +1970,9 @@ const saveSchedule = async () => {
       schedule_configs: enabledSchedules.map((schedule) => ({
         day: schedule.day,
         session_time_id: schedule.session_time_id,
+        registration_program_id: registrationProgramForSessionTime(
+          getSessionTimeById(schedule.session_time_id),
+        )?.registration_program_id,
       })),
     })
 
@@ -1553,6 +2038,8 @@ const saveSession = async () => {
       therapy_date: sessionForm.value.therapy_date,
 
       session_time_id: sessionForm.value.session_time_id,
+      registration_program_id: registrationProgramForSessionTime(selectedSessionTime.value)
+        ?.registration_program_id,
 
       start_time: selectedSessionTime.value.start_time,
 
@@ -1696,8 +2183,10 @@ const openEditSession = (item) => {
 
   const selectedSessionTime = programCategorySessionTimes.value.find(
     (slot) =>
-      slot.start_time.startsWith(item.start_time.substring(0, 5)) &&
-      slot.end_time.startsWith(item.end_time.substring(0, 5)),
+      (item.program_category_session_time_id
+        ? Number(slot.id) === Number(item.program_category_session_time_id)
+        : slot.start_time.startsWith(item.start_time.substring(0, 5)) &&
+          slot.end_time.startsWith(item.end_time.substring(0, 5))),
   )
 
   sessionForm.value = {
@@ -1820,7 +2309,11 @@ onMounted(async () => {
 
   await fetchRegistration()
 
-  await Promise.all([fetchSessions(), fetchTherapySessionStatuses()])
+  await Promise.all([
+    fetchSessions(),
+    fetchTherapySessionStatuses(),
+    fetchTrackAvailabilityCategories(),
+  ])
   const today = new Date()
 
   const endDate = new Date()
@@ -1840,6 +2333,13 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.schedule-content {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1937,6 +2437,97 @@ onMounted(async () => {
 .multiple-session-table td {
   padding: 10px 8px;
   vertical-align: top;
+}
+
+.track-availability-table-wrapper {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.track-availability-card-text,
+.track-availability-table {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.track-availability-table :deep(.v-table__wrapper) {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.track-availability-table :deep(table) {
+  min-width: 1050px;
+}
+
+.track-availability-table :deep(td:nth-child(8)) {
+  min-width: 220px;
+  white-space: normal;
+}
+
+.track-session-details {
+  min-width: 210px;
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.package-summary-table-wrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.package-summary-table :deep(table) {
+  min-width: 760px;
+}
+
+.schedule-table--track-based {
+  min-width: 760px;
+}
+
+.schedule-table--track-based :deep(table) {
+  min-width: 760px;
+  table-layout: fixed;
+}
+
+.schedule-table--track-based th:nth-child(1),
+.schedule-table--track-based td:nth-child(1) {
+  width: 18%;
+  min-width: 145px;
+}
+
+.schedule-table--track-based th:nth-child(2),
+.schedule-table--track-based td:nth-child(2) {
+  width: 8%;
+  min-width: 72px;
+}
+
+.schedule-table--track-based th:nth-child(3),
+.schedule-table--track-based td:nth-child(3) {
+  width: 62%;
+  min-width: 400px;
+}
+
+.schedule-table--track-based th:nth-child(4),
+.schedule-table--track-based td:nth-child(4) {
+  width: 72px;
+  min-width: 72px;
+}
+
+.schedule-table--track-based th {
+  white-space: nowrap;
+}
+
+.schedule-table--track-based td:nth-child(1) .v-select {
+  min-width: 125px;
+}
+
+.schedule-table--track-based td:nth-child(3) .v-select {
+  min-width: 380px;
 }
 
 @media (max-width: 960px) {

@@ -57,10 +57,35 @@
               />
             </v-col>
 
-            <v-col cols="12" md="6">
+            <v-col v-if="selectedCategory?.supports_tracks" cols="12">
+              <v-checkbox
+                v-model="form.is_registration_fee"
+                label="This is the annual registration fee (charged once per child per year)"
+                hide-details
+              />
+            </v-col>
+
+            <v-col
+              v-if="selectedCategory?.supports_tracks && !form.is_registration_fee"
+              cols="12"
+              md="6"
+            >
+              <v-select
+                v-model="form.program_track_id"
+                :items="activeTracks"
+                :item-title="trackTitle"
+                item-value="id"
+                label="Subject and Mode"
+                variant="outlined"
+                :rules="[rules.required]"
+                clearable
+              />
+            </v-col>
+
+            <v-col v-if="!form.is_registration_fee" cols="12" md="6">
               <v-text-field
-                v-model="form.session_count"
-                label="Session Count"
+                v-model.number="form.session_count"
+                label="Sessions per Month"
                 type="number"
                 min="0"
                 variant="outlined"
@@ -70,11 +95,13 @@
 
             <v-col cols="12" md="6">
               <v-text-field
-                v-model="form.price"
-                label="Price"
+                :label="trackedPackage ? 'Monthly Package Price (Rp)' : 'Price (Rp)'"
                 type="number"
                 variant="outlined"
                 :rules="[rules.required]"
+                :readonly="trackedPackage"
+                :model-value="trackedPackage ? calculatedPrice : form.price"
+                @update:model-value="updateProgramPrice"
               />
             </v-col>
 
@@ -129,7 +156,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 
@@ -141,6 +168,7 @@ const snackbarText = ref('')
 const snackbarColor = ref('success')
 const clinics = ref([])
 const programCategories = ref([])
+const tracks = ref([])
 const payers = ref([])
 const formRef = ref()
 
@@ -151,6 +179,8 @@ const rules = {
 const form = ref({
   clinic_id: null,
   program_category_id: null,
+  program_track_id: null,
+  is_registration_fee: false,
   payer_id: null,
   order_number: null,
   name: '',
@@ -158,6 +188,22 @@ const form = ref({
   price: null,
   session_count: null,
 })
+
+const selectedCategory = computed(() =>
+  programCategories.value.find(
+    (category) => Number(category.id) === Number(form.value.program_category_id),
+  ),
+)
+const activeTracks = computed(() => tracks.value.filter((track) => track.is_active))
+const selectedTrack = computed(() =>
+  tracks.value.find((track) => Number(track.id) === Number(form.value.program_track_id)),
+)
+const trackedPackage = computed(() => selectedCategory.value?.supports_tracks && selectedTrack.value && !form.value.is_registration_fee)
+const calculatedPrice = computed(() => Number(selectedTrack.value?.price_per_session || 0) * Number(form.value.session_count || 0))
+const trackTitle = (track) => `${track.subject_name} · ${track.delivery_mode}`
+const updateProgramPrice = (value) => {
+  if (!trackedPackage.value) form.value.price = value
+}
 
 const showSnackbar = (text, color = 'success') => {
   snackbarText.value = text
@@ -183,6 +229,36 @@ const fetchMasterData = async () => {
   }
 }
 
+const fetchTracks = async (categoryId) => {
+  tracks.value = []
+  if (!categoryId) return
+  try {
+    const response = await api.get(`/program-categories/${categoryId}/tracks`)
+    tracks.value = response.data.data || []
+  } catch (error) {
+    console.error('Error loading program tracks:', error)
+  }
+}
+
+watch(() => form.value.program_category_id, async (categoryId) => {
+  form.value.program_track_id = null
+  form.value.is_registration_fee = false
+  if (programCategories.value.find((category) => Number(category.id) === Number(categoryId))?.supports_tracks) {
+    await fetchTracks(categoryId)
+  } else {
+    tracks.value = []
+  }
+})
+
+watch(() => form.value.is_registration_fee, (isFee) => {
+  if (isFee) {
+    form.value.program_track_id = null
+    form.value.session_count = 0
+  } else if (Number(form.value.session_count) === 0) {
+    form.value.session_count = 1
+  }
+})
+
 const createProgram = async () => {
   if (loading.value) return
 
@@ -199,12 +275,14 @@ const createProgram = async () => {
     await api.post('/programs', {
       clinic_id: form.value.clinic_id,
       program_category_id: form.value.program_category_id,
+      program_track_id: form.value.program_track_id,
+      is_registration_fee: form.value.is_registration_fee,
       payer_id: form.value.payer_id,
       order_number: form.value.order_number,
       name: form.value.name,
       description: form.value.description,
-      price: form.value.price,
-      session_count: form.value.session_count,
+      price: trackedPackage.value ? calculatedPrice.value : form.value.price,
+      session_count: form.value.is_registration_fee ? 0 : form.value.session_count,
     })
 
     showSnackbar('Program created successfully')

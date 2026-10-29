@@ -119,6 +119,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/components/MasterData/ProgramCategoryCreate.vue'),
     meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin'] },
   },
+  {
+    path: '/program-categories/:id/tracks',
+    component: () => import('@/components/MasterData/ProgramCategoryTracks.vue'),
+    meta: { layout: 'app', requiresAuth: true, allowedRoles: ['admin'] },
+  },
 
   // transactions
   {

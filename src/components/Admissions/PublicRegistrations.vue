@@ -286,6 +286,14 @@
                 />
               </v-col>
 
+              <v-col v-if="selectedProgramCategory?.supports_tracks" cols="12">
+                <SchoolReadinessProgramSelector
+                  v-model="form.registration.program_selections"
+                  :programs="filteredPrograms"
+                />
+              </v-col>
+
+              <template v-else>
               <v-col cols="12" md="6">
                 <v-autocomplete
                   v-model="form.registration.program_ids"
@@ -333,6 +341,8 @@
                 item-value="value"
                 variant="outlined"
               />
+              </template>
+
             </v-row>
           </v-card-text>
         </v-card>
@@ -353,6 +363,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import logo from '@/assets/ahamon-logo.png'
 import api from '@/services/api'
+import SchoolReadinessProgramSelector from './SchoolReadinessProgramSelector.vue'
 const router = useRouter()
 
 /* =========================
@@ -416,6 +427,7 @@ const form = ref({
     clinic_id: null,
     program_category_id: null,
     program_ids: [],
+    program_selections: [],
     payer_id: null,
     program_duration_months: 1,
   },
@@ -460,6 +472,18 @@ const filteredPrograms = computed(() => {
       Number(program.payer_id) === Number(payerId),
   )
 })
+
+const selectedProgramCategory = computed(() =>
+  programCategories.value.find(
+    (category) => Number(category.id) === Number(form.value.registration.program_category_id),
+  ),
+)
+
+const hasSelectedSchoolReadinessSubject = () =>
+  form.value.registration.program_selections.some((selection) => {
+    const program = filteredPrograms.value.find((item) => Number(item.id) === Number(selection.program_id))
+    return Boolean(program?.track && !program.is_registration_fee)
+  })
 
 const recommendedProgramCategory = computed(() => {
   if (!form.value.child.birth_date) return ''
@@ -535,6 +559,16 @@ const fetchMaster = async () => {
 const submitForm = async () => {
   if (!publicRegistrationEnabled.value) return
 
+  if (
+    selectedProgramCategory.value?.supports_tracks &&
+    !hasSelectedSchoolReadinessSubject()
+  ) {
+    snackbarText.value = 'Choose at least one School Readiness subject package.'
+    snackbarColor.value = 'error'
+    snackbar.value = true
+    return
+  }
+
   const { valid } = await formRef.value.validate()
   if (!valid) return
 
@@ -552,6 +586,9 @@ const submitForm = async () => {
 
       registration: {
         ...form.value.registration,
+        program_selections: selectedProgramCategory.value?.supports_tracks
+          ? form.value.registration.program_selections
+          : undefined,
       },
     }
 
@@ -607,6 +644,7 @@ watch(
     form.value.registration.payer_id = null
     form.value.registration.program_id = null
     form.value.registration.program_ids = []
+    form.value.registration.program_selections = []
   },
 )
 
@@ -617,6 +655,7 @@ watch(
     form.value.registration.payer_id = null
     form.value.registration.program_id = null
     form.value.registration.program_ids = []
+    form.value.registration.program_selections = []
   },
 )
 
@@ -625,6 +664,7 @@ watch(
   () => {
     form.value.registration.program_id = null
     form.value.registration.program_ids = []
+    form.value.registration.program_selections = []
   },
 )
 

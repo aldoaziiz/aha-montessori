@@ -70,6 +70,17 @@
               :sort-by="sortBy"
               @update:options="onOptionsChange"
             >
+              <template v-slot:item.name="{ item }">
+                <div class="program-name-cell">
+                  <span>{{ item.name }}</span>
+                  <span
+                    v-if="item.is_registration_fee"
+                    class="text-caption text-amber-darken-2 font-weight-medium"
+                  >
+                    Annual Registration Fee
+                  </span>
+                </div>
+              </template>
               <template v-slot:item.clinic="{ item }">
                 {{ item.clinic?.name || '-' }}
               </template>
@@ -417,6 +428,13 @@ onMounted(() => {
 
 .programs-content {
   width: 100%;
+}
+
+.program-name-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.35;
 }
 
 .page-header {

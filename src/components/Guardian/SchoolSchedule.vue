@@ -162,7 +162,10 @@
     <v-card v-if="selectedRegistration" elevation="1" class="rounded-xl mt-5">
       <v-card-title class="px-5 pt-5">Choose Schedule</v-card-title>
       <v-card-subtitle class="px-5">
-        Select one or more available dates, then choose a session for each date.
+        <span v-if="selectedRegistration?.program_category?.supports_tracks">
+          Choose session slots for each subject. You may select multiple sessions per day when their times do not overlap.
+        </span>
+        <span v-else>Select one or more available dates, then choose a session for each date.</span>
       </v-card-subtitle>
 
       <v-card-text class="pa-5">
@@ -248,6 +251,9 @@
               <v-chip color="success" variant="tonal" size="small">
                 {{ selectedDateDetails.length }} selected
               </v-chip>
+              <v-chip color="primary" variant="tonal" size="small">
+                {{ selectedSessionCount }} sessions
+              </v-chip>
             </div>
 
             <div class="selected-date-list">
@@ -263,19 +269,26 @@
                     <v-btn
                       v-for="session in day.sessions"
                       :key="session.id"
-                      :disabled="session.is_full"
+                      :disabled="session.is_full || !session.available_for_program || session.has_child_time_conflict"
                       :class="[
                         'session-option',
-                        { 'session-option--selected': selectedSessionIds[day.date] === session.id },
+                        { 'session-option--selected': (selectedSessionIds[day.date] || []).includes(session.id) },
                       ]"
                       variant="outlined"
                       height="auto"
                       @click="selectSession(day.date, session.id)"
                     >
                       <span class="session-option__content">
-                        <span class="font-weight-bold">{{ session.session_name }}</span>
+                        <span class="font-weight-bold">
+                          {{ session.subject_name ? `${session.subject_name} · ${session.delivery_mode} · Class ${session.class_code}` : session.session_name }}
+                        </span>
+                        <span v-if="session.subject_name">{{ session.session_name }}</span>
                         <span>{{ session.start_time }} - {{ session.end_time }}</span>
                         <span>{{ session.occupied }}/{{ session.capacity }} slot</span>
+                        <span v-if="session.program_sessions_remaining != null">
+                          {{ session.program_sessions_remaining }} package sessions remaining
+                        </span>
+                        <span v-if="session.has_child_time_conflict" class="text-error">Conflicts with another session</span>
                       </span>
                     </v-btn>
                   </div>
@@ -347,7 +360,15 @@
           >
             <v-card-text class="monthly-schedule-card__content">
               <div class="font-weight-bold">{{ formatScheduleDate(session.therapy_date) }}</div>
-              <div>
+              <template v-if="session.subject_name">
+                <div>
+                  {{ session.subject_name }} · {{ formatDeliveryMode(session.delivery_mode) }} · Class {{ session.class_code }}
+                </div>
+                <div>
+                  {{ session.session_name }} · {{ session.start_time }} - {{ session.end_time }}
+                </div>
+              </template>
+              <div v-else>
                 {{ session.session_name }} · {{ session.start_time }} - {{ session.end_time }}
               </div>
               <div class="monthly-schedule-card__status">
@@ -458,7 +479,6 @@ const availableYears = computed(() => {
 
 const availableMonths = computed(() => {
   if (!currentDate.value || !selectedYear.value) return []
-
   return monthNames
     .map((title, index) => ({ title, value: index + 1 }))
 })
@@ -486,6 +506,15 @@ const selectedDateDetails = computed(() =>
 
 const monthlySchedules = computed(() => calendarData.value?.scheduled_sessions ?? [])
 
+const formatDeliveryMode = (mode) => {
+  if (!mode) return ''
+  return String(mode).charAt(0).toUpperCase() + String(mode).slice(1)
+}
+const isTrackBased = computed(() => Boolean(selectedRegistration.value?.program_category?.supports_tracks))
+const selectedSessionCount = computed(() =>
+  Object.values(selectedSessionIds.value).reduce((total, sessionIds) => total + sessionIds.length, 0),
+)
+
 const selectedMonthName = computed(() => monthNames[(selectedMonth.value ?? 1) - 1])
 
 const selectedMonthIsPast = computed(() => {
@@ -496,14 +525,14 @@ const selectedMonthIsPast = computed(() => {
 })
 
 const missingSessionCount = computed(() =>
-  selectedDateDetails.value.filter((day) => !selectedSessionIds.value[day.date]).length,
+  selectedDateDetails.value.filter((day) => !(selectedSessionIds.value[day.date] || []).length).length,
 )
 
 const canSubmit = computed(
   () =>
     calendarData.value?.can_schedule &&
     selectedDateDetails.value.length > 0 &&
-    selectedDateDetails.value.length <= calendarData.value.available_to_schedule &&
+    selectedSessionCount.value <= calendarData.value.available_to_schedule &&
     missingSessionCount.value === 0 &&
     !submitLoading.value,
 )
@@ -638,9 +667,15 @@ const handleDateSelection = (value) => {
 }
 
 const selectSession = (date, sessionId) => {
+  const current = selectedSessionIds.value[date] || []
+  const next = current.includes(sessionId)
+    ? current.filter((id) => id !== sessionId)
+    : isTrackBased.value
+      ? [...current, sessionId]
+      : [sessionId]
   selectedSessionIds.value = {
     ...selectedSessionIds.value,
-    [date]: sessionId,
+    [date]: next,
   }
 }
 
@@ -656,11 +691,13 @@ const applyCalendarData = (data) => {
   selectedDates.value = selectedDates.value.filter((date) => allowedDates.has(toIsoDate(date)))
 
   const validSelections = {}
-  for (const [date, sessionId] of Object.entries(selectedSessionIds.value)) {
+  for (const [date, sessionIds] of Object.entries(selectedSessionIds.value)) {
     const day = data?.dates?.find((item) => item.date === date)
-    const session = day?.sessions?.find((item) => item.id === sessionId)
-    if (allowedDates.has(date) && session && !session.is_full) {
-      validSelections[date] = sessionId
+    const validSessions = sessionIds
+      .map((id) => day?.sessions?.find((item) => item.id === id))
+      .filter((session) => session && !session.is_full && session.available_for_program && !session.has_child_time_conflict)
+    if (allowedDates.has(date) && validSessions.length) {
+      validSelections[date] = validSessions.map((session) => session.id)
     }
   }
   selectedSessionIds.value = validSelections
@@ -763,7 +800,7 @@ const submitSchedule = async () => {
     showSnackbar('Select at least one date before saving.', 'warning')
     return
   }
-  if (selectedDateDetails.value.length > Number(calendarData.value?.available_to_schedule ?? 0)) {
+  if (selectedSessionCount.value > Number(calendarData.value?.available_to_schedule ?? 0)) {
     showSnackbar(
       `You can only schedule ${calendarData.value?.available_to_schedule ?? 0} more sessions.`,
       'warning',
@@ -782,10 +819,16 @@ const submitSchedule = async () => {
       registration_id: selectedRegistrationId.value,
       year: selectedYear.value,
       month: selectedMonth.value,
-      sessions: selectedDateDetails.value.map((day) => ({
-        therapy_date: day.date,
-        session_time_id: selectedSessionIds.value[day.date],
-      })),
+      sessions: selectedDateDetails.value.flatMap((day) =>
+        (selectedSessionIds.value[day.date] || []).map((sessionId) => {
+          const session = day.sessions.find((item) => item.id === sessionId)
+          return {
+            therapy_date: day.date,
+            session_time_id: session.id,
+            registration_program_id: session.registration_program_id ?? undefined,
+          }
+        }),
+      ),
     })
 
     resetCalendarSelection()

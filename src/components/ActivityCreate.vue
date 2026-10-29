@@ -403,11 +403,31 @@ async function fetchSchoolSessions(programCategoryId) {
   try {
     const response = await api.get(`/program-categories/${programCategoryId}/session-times`)
 
-    schoolSessions.value = (response.data.data ?? []).map((session) => ({
-      ...session,
+    schoolSessions.value = (response.data.data ?? []).map((session) => {
+      const track = session.track
+      const trackDetails = track
+        ? [
+            track.subject_name,
+            track.delivery_mode
+              ? track.delivery_mode.charAt(0).toUpperCase() + track.delivery_mode.slice(1).toLowerCase()
+              : null,
+            track.class_code ? `Class ${track.class_code}` : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')
+        : null
 
-      label: `${session.session_name} • ${session.start_time.slice(0, 5)} - ${session.end_time.slice(0, 5)}`,
-    }))
+      const sessionNumber = session.session_name?.match(/^Sesi\s+(\d+)/i)?.[1]
+      const sessionLabel = track && sessionNumber
+        ? `Sesi ${sessionNumber}`
+        : session.session_name
+      const timeRange = `${session.start_time.slice(0, 5)} - ${session.end_time.slice(0, 5)}`
+
+      return {
+        ...session,
+        label: [trackDetails, sessionLabel, timeRange].filter(Boolean).join(' · '),
+      }
+    })
   } catch (error) {
     console.error(error)
 

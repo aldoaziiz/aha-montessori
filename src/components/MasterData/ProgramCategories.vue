@@ -44,6 +44,18 @@
               clearable
             />
           </v-col>
+
+          <v-col v-if="selectedCategoryObject?.supports_tracks" cols="12" md="3">
+            <v-btn
+              color="primary"
+              variant="tonal"
+              block
+              prepend-icon="mdi-shape"
+              @click="router.push(`/program-categories/${selectedCategory}/tracks`)"
+            >
+              Manage Tracks
+            </v-btn>
+          </v-col>
         </v-row>
         <v-data-table :headers="headers" :items="items" :loading="loading" item-value="id">
           <template #item.time="{ item }">{{ item.start_time }} - {{ item.end_time }}</template>
@@ -149,7 +161,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import debounce from 'lodash/debounce'
 import api from '@/services/api'
@@ -160,6 +172,9 @@ const items = ref([])
 const search = ref('')
 const categories = ref([])
 const selectedCategory = ref(null)
+const selectedCategoryObject = computed(() =>
+  categories.value.find((item) => Number(item.id) === Number(selectedCategory.value)),
+)
 const editDialog = ref(false)
 const snackbar = ref(false)
 const snackbarText = ref('')

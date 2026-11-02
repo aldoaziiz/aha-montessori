@@ -465,6 +465,8 @@ const parseDate = (value) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
+const monthStart = (date) => new Date(date.getFullYear(), date.getMonth(), 1)
+
 const availableYears = computed(() => {
   if (!currentDate.value) return []
 
@@ -714,24 +716,16 @@ const firstApiError = (error, fallback) => {
 }
 
 const resetSelectedPeriod = () => {
-  const bounds = selectionBounds.value
   const today = parseDate(currentDate.value)
 
-  if (!bounds || !today) {
+  if (!today) {
     selectedYear.value = null
     selectedMonth.value = null
     return
   }
 
-  const currentMonth = monthStart(today)
-  const defaultMonth = currentMonth < bounds.start
-    ? bounds.start
-    : currentMonth > bounds.end
-      ? bounds.end
-      : currentMonth
-
-  selectedYear.value = defaultMonth.getFullYear()
-  selectedMonth.value = defaultMonth.getMonth() + 1
+  selectedYear.value = today.getFullYear()
+  selectedMonth.value = today.getMonth() + 1
 }
 
 watch(selectedRegistrationId, resetSelectedPeriod)

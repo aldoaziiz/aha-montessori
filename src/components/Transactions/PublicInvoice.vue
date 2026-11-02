@@ -83,7 +83,7 @@
             <div class="flex-grow-1">
               {{ item.description }}
               <div v-if="Number(item.discount_amount) > 0" class="text-caption text-medium-emphasis">
-                Diskon {{ Number(item.discount_percentage) }}% · -{{ formatCurrency(item.discount_amount) }}
+                Diskon · -{{ formatCurrency(item.discount_amount) }}
               </div>
             </div>
 

@@ -251,27 +251,20 @@
               </div>
 
               <v-row align="center" class="mt-2">
-                <v-col cols="12" sm="4">
+                <v-col cols="12" sm="6">
                   <v-text-field
-                    v-model.number="item.discount_percentage"
+                    v-model.number="item.discount_amount"
                     type="number"
-                    label="Discount"
-                    suffix="%"
+                    label="Discount Amount"
+                    prefix="Rp"
                     min="0"
-                    max="100"
-                    step="0.01"
+                    :max="item.subtotal"
+                    step="1"
                     variant="outlined"
-                    hide-details
-                    @blur="normalizeDiscount(item)"
+                    :error-messages="discountAmountError(item) ? [discountAmountError(item)] : []"
                   />
                 </v-col>
-                <v-col cols="12" sm="4">
-                  <div class="text-caption text-medium-emphasis">Discount Amount</div>
-                  <div class="font-weight-medium">
-                    {{ formatCurrency(calculateDiscountAmount(item)) }}
-                  </div>
-                </v-col>
-                <v-col cols="12" sm="4">
+                <v-col cols="12" sm="6">
                   <div class="text-caption text-medium-emphasis">After Discount</div>
                   <div class="font-weight-medium">
                     {{ formatCurrency(calculateNetItemTotal(item)) }}
@@ -309,7 +302,7 @@
           color="primary"
           prepend-icon="mdi-file-document-check"
           :loading="billingGenerationLoading"
-          :disabled="billingPreviewLoading || !billingDraftItems.length"
+          :disabled="billingPreviewLoading || !billingDraftItems.length || hasInvalidBillingDiscount"
           @click="submitGenerateBilling"
         >
           Generate
@@ -581,7 +574,7 @@
           <div class="flex-grow-1">
             {{ item.description }}
             <div v-if="Number(item.discount_amount) > 0" class="text-caption text-medium-emphasis">
-              Discount {{ Number(item.discount_percentage) }}% · -{{ formatCurrency(item.discount_amount) }}
+              Discount · -{{ formatCurrency(item.discount_amount) }}
             </div>
           </div>
 
@@ -758,6 +751,9 @@ const billingPreviewDiscount = computed(() =>
   billingDraftItems.value.reduce((sum, item) => sum + calculateDiscountAmount(item), 0),
 )
 const billingPreviewTotal = computed(() => billingPreviewSubtotal.value - billingPreviewDiscount.value)
+const hasInvalidBillingDiscount = computed(() =>
+  billingDraftItems.value.some((item) => discountAmountError(item)),
+)
 const selectedBilling = ref(null)
 const cancelBillingLoading = ref(false)
 const snackbar = ref(false)
@@ -781,19 +777,26 @@ const showSnackbar = (text, color = 'success') => {
 }
 
 const calculateDiscountAmount = (item) => {
-  const subtotal = Number(item?.subtotal || 0)
-  const percentage = Math.min(100, Math.max(0, Number(item?.discount_percentage) || 0))
-  return Math.round((subtotal * percentage) / 100)
+  const amount = Number(item?.discount_amount)
+  return Number.isFinite(amount) ? Math.max(0, Math.round(amount)) : 0
 }
 
 const calculateNetItemTotal = (item) =>
-  Math.max(0, Number(item?.subtotal || 0) - Number(item?.discount_amount || calculateDiscountAmount(item)))
+  Math.max(0, Number(item?.subtotal || 0) - calculateDiscountAmount(item))
 
-const normalizeDiscount = (item) => {
-  const percentage = Number(item.discount_percentage)
-  item.discount_percentage = Number.isFinite(percentage)
-    ? Math.round(Math.min(100, Math.max(0, percentage)) * 100) / 100
-    : 0
+const discountAmountError = (item) => {
+  const rawAmount = item?.discount_amount
+  const amount = rawAmount === '' || rawAmount == null ? 0 : Number(rawAmount)
+  const subtotal = Number(item?.subtotal || 0)
+
+  if (!Number.isFinite(amount) || amount < 0 || !Number.isInteger(amount)) {
+    return 'Enter a whole rupiah amount of zero or more.'
+  }
+  if (amount > subtotal) {
+    return `Discount cannot exceed ${formatCurrency(subtotal)}.`
+  }
+
+  return ''
 }
 
 const billingSubtotal = (items = []) =>
@@ -995,7 +998,7 @@ const generateBilling = async (item) => {
     billingPreview.value = response.data.data
     billingDraftItems.value = response.data.data.items.map((line) => ({
       ...line,
-      discount_percentage: 0,
+      discount_amount: 0,
     }))
   } catch (error) {
     console.error(error)
@@ -1009,13 +1012,12 @@ const generateBilling = async (item) => {
 const submitGenerateBilling = async () => {
   if (!selectedRegistrationForBilling.value) return
 
-  billingDraftItems.value.forEach(normalizeDiscount)
   billingGenerationLoading.value = true
 
   try {
     const discounts = billingDraftItems.value.map((line) => ({
       registration_program_id: line.registration_program_id,
-      discount_percentage: line.discount_percentage,
+      discount_amount: line.discount_amount || 0,
     }))
     await api.post(
       '/registrations/' + selectedRegistrationForBilling.value.id + '/generate-billing',

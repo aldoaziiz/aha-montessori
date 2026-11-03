@@ -110,8 +110,54 @@
         </v-card-text>
       </v-card>
 
+      <v-card v-if="isExternallyScheduled" elevation="1" class="mb-4 rounded-lg">
+        <v-card-title>Assessment Appointment</v-card-title>
+        <v-divider />
+        <v-card-text>
+          <v-alert type="info" variant="tonal" class="mb-4">
+            Enter the appointment agreed with AHA CDC. Guardians can view the saved date and time; payment status does not block scheduling.
+          </v-alert>
+          <v-row>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model="assessmentScheduleForm.appointment_date"
+                type="date"
+                label="Assessment Date"
+                variant="outlined"
+                :disabled="appointmentSaving"
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model="assessmentScheduleForm.start_time"
+                type="time"
+                label="Start Time"
+                variant="outlined"
+                :disabled="appointmentSaving"
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model="assessmentScheduleForm.end_time"
+                type="time"
+                label="End Time"
+                variant="outlined"
+                :disabled="appointmentSaving"
+              />
+            </v-col>
+          </v-row>
+          <div class="d-flex justify-end">
+            <v-btn color="primary" :loading="appointmentSaving" @click="saveAssessmentAppointment">
+              Save Appointment
+            </v-btn>
+          </div>
+        </v-card-text>
+      </v-card>
+
       <!-- AVAILABILITY GRID -->
       <!-- WEEKLY AVAILABILITY GRID -->
+
+      <template v-if="!isExternallyScheduled">
 
       <v-divider />
       <v-card elevation="1" class="mb-4 rounded-lg">
@@ -798,6 +844,7 @@
       </v-card>
 
       <!-- SNACKBAR -->
+      </template>
       <v-snackbar v-model="snackbar" :color="snackbarColor" location="top right" timeout="3000">
         {{ snackbarText }}
       </v-snackbar>
@@ -1094,10 +1141,21 @@ import api from '@/services/api'
 const route = useRoute()
 const router = useRouter()
 const registration = ref({})
+const assessmentScheduleForm = ref({
+  appointment_date: '',
+  start_time: '',
+  end_time: '',
+})
+const appointmentSaving = ref(false)
 const sessions = ref([])
 const snackbar = ref(false)
 const snackbarText = ref('')
 const snackbarColor = ref('success')
+const showSnackbar = (message, color = 'success') => {
+  snackbarText.value = message
+  snackbarColor.value = color
+  snackbar.value = true
+}
 const loading = ref(true)
 const saving = ref(false)
 const formRef = ref(null)
@@ -1124,6 +1182,11 @@ const programCategorySessionTimes = ref([])
 const updatingAttendance = ref([])
 const validatingMultipleSessions = ref(false)
 const savingMultipleSessions = ref(false)
+
+const isExternallyScheduled = computed(() =>
+  (registration.value.program_category?.schedule_mode
+    ?? registration.value.programs?.[0]?.program_category?.schedule_mode) === 'external',
+)
 
 const sessionFilters = ref({
   day: null,
@@ -1698,6 +1761,11 @@ const fetchRegistration = async ({ loadSessionTimes = true } = {}) => {
     if (requestId !== registrationRequestId) return
 
     registration.value = res.data.data
+    assessmentScheduleForm.value = {
+      appointment_date: res.data.data.assessment_detail?.appointment_date ?? '',
+      start_time: res.data.data.assessment_detail?.start_time ?? '',
+      end_time: res.data.data.assessment_detail?.end_time ?? '',
+    }
   } catch (err) {
     if (requestId === registrationRequestId) sessionSummaryError.value = true
     console.error(err)
@@ -1705,7 +1773,27 @@ const fetchRegistration = async ({ loadSessionTimes = true } = {}) => {
     if (requestId === registrationRequestId) sessionSummaryLoading.value = false
   }
 
-  if (loadSessionTimes) await fetchProgramCategorySessionTimes()
+  if (loadSessionTimes && !isExternallyScheduled.value) await fetchProgramCategorySessionTimes()
+}
+
+const saveAssessmentAppointment = async () => {
+  appointmentSaving.value = true
+  try {
+    await api.put(`/registrations/${route.params.id}/assessment-appointment`, {
+      appointment_date: assessmentScheduleForm.value.appointment_date || null,
+      start_time: assessmentScheduleForm.value.start_time || null,
+      end_time: assessmentScheduleForm.value.end_time || null,
+    })
+    await fetchRegistration({ loadSessionTimes: false })
+    showSnackbar('Assessment appointment saved successfully.', 'success')
+  } catch (error) {
+    showSnackbar(
+      error.response?.data?.message || 'Failed to save assessment appointment.',
+      'error',
+    )
+  } finally {
+    appointmentSaving.value = false
+  }
 }
 
 // ======================

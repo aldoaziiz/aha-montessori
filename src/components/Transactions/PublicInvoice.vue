@@ -132,11 +132,17 @@
                 <v-col cols="12" md="6">
                   <div class="text-subtitle-1 font-weight-bold mb-2">Informasi Pembayaran</div>
 
-                  <div><strong>Bank:</strong> BNI</div>
+                  <div><strong>Bank:</strong> {{ invoice.payment_information?.bank || 'BNI' }}</div>
 
-                  <div><strong>No. Rekening:</strong> 1982335396</div>
+                  <div>
+                    <strong>No. Rekening:</strong>
+                    {{ invoice.payment_information?.account_number || '1982335396' }}
+                  </div>
 
-                  <div><strong>Atas Nama:</strong> Fitria Ayu Rahmawati</div>
+                  <div>
+                    <strong>Atas Nama:</strong>
+                    {{ invoice.payment_information?.account_name || 'Fitria Ayu Rahmawati' }}
+                  </div>
                 </v-col>
 
                 <v-col cols="12" md="6">
@@ -149,7 +155,8 @@
                     </li>
 
                     <li>
-                      Pembayaran dilakukan melalui rekening BNI yang tercantum pada bagian
+                      Pembayaran dilakukan melalui rekening
+                      {{ invoice.payment_information?.bank || 'BNI' }} yang tercantum pada bagian
                       Informasi Pembayaran.
                     </li>
                   </ol>

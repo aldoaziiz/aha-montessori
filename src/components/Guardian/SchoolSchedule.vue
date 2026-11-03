@@ -80,7 +80,7 @@
               </v-select>
             </v-col>
 
-            <v-col cols="6">
+            <v-col v-if="!isExternallyScheduled" cols="6">
               <v-select
                 v-model="selectedYear"
                 :items="availableYears"
@@ -91,7 +91,7 @@
               />
             </v-col>
 
-            <v-col cols="6">
+            <v-col v-if="!isExternallyScheduled" cols="6">
               <v-select
                 v-model="selectedMonth"
                 :items="availableMonths"
@@ -110,7 +110,7 @@
               <span class="text-medium-emphasis">Program category:</span>
               {{ selectedRegistration.program_category?.name || '-' }}
             </div>
-            <div>
+            <div v-if="!isExternallyScheduled">
               <span class="text-medium-emphasis">Session validity:</span>
               {{ formatLongDate(selectedRegistration.session_started_at) }}
               to
@@ -118,8 +118,36 @@
             </div>
           </div>
 
+          <v-card
+            v-if="selectedRegistration && isExternallyScheduled"
+            variant="outlined"
+            class="mt-5 rounded-lg"
+          >
+            <v-card-title class="text-subtitle-1">Assessment Appointment</v-card-title>
+            <v-divider />
+            <v-card-text>
+              <div v-if="selectedRegistration.assessment_appointment?.appointment_date">
+                <div class="font-weight-medium">
+                  {{ formatLongDate(selectedRegistration.assessment_appointment.appointment_date) }}
+                </div>
+                <div class="text-body-2 text-medium-emphasis">
+                  {{ selectedRegistration.assessment_appointment.start_time }} –
+                  {{ selectedRegistration.assessment_appointment.end_time }}
+                </div>
+              </div>
+              <v-alert v-else type="info" variant="tonal" density="comfortable">
+                The assessment appointment has not been arranged yet. The admin will update this
+                information after coordinating with AHA CDC.
+              </v-alert>
+              <div class="text-caption text-medium-emphasis mt-3">
+                This appointment is shown for information only. Please contact the admin if you
+                need assistance.
+              </div>
+            </v-card-text>
+          </v-card>
+
           <v-alert
-            v-if="registrationMessage"
+            v-if="registrationMessage && !isExternallyScheduled"
             :type="registrationMessageType"
             variant="tonal"
             class="mt-4"
@@ -127,7 +155,7 @@
             {{ registrationMessage }}
           </v-alert>
 
-          <div v-if="selectedSummary" class="summary-grid mt-2">
+          <div v-if="selectedSummary && !isExternallyScheduled" class="summary-grid mt-2">
             <v-card color="#F5F5F5" class="summary-card text-grey-darken-4" flat>
               <v-card-text>
                 <div class="summary-card__label">Total Sessions</div>
@@ -159,7 +187,7 @@
       </v-card-text>
     </v-card>
 
-    <v-card v-if="selectedRegistration" elevation="1" class="rounded-xl mt-5">
+    <v-card v-if="selectedRegistration && !isExternallyScheduled" elevation="1" class="rounded-xl mt-5">
       <v-card-title class="px-5 pt-5">Choose Schedule</v-card-title>
       <v-card-subtitle class="px-5">
         <span v-if="selectedRegistration?.program_category?.supports_tracks">
@@ -332,7 +360,7 @@
     </v-card>
 
     <v-card
-      v-if="selectedRegistration && selectedYear && selectedMonth"
+      v-if="selectedRegistration && !isExternallyScheduled && selectedYear && selectedMonth"
       elevation="1"
       class="rounded-xl mt-5"
     >
@@ -441,6 +469,10 @@ let calendarRequestId = 0
 
 const selectedRegistration = computed(() =>
   registrations.value.find((registration) => registration.id === selectedRegistrationId.value),
+)
+
+const isExternallyScheduled = computed(
+  () => selectedRegistration.value?.program_category?.schedule_mode === 'external',
 )
 
 const selectedSummary = computed(() => {
@@ -748,7 +780,12 @@ watch(
   () => {
     resetCalendarSelection()
 
-    if (selectedRegistrationId.value && selectedYear.value && selectedMonth.value) {
+    if (isExternallyScheduled.value) {
+      calendarRequestId += 1
+      calendarData.value = null
+      calendarError.value = ''
+      calendarLoading.value = false
+    } else if (selectedRegistrationId.value && selectedYear.value && selectedMonth.value) {
       fetchCalendar()
     } else {
       calendarData.value = null

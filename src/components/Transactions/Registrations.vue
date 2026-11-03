@@ -468,6 +468,65 @@
           </v-list-item>
         </v-list>
 
+        <template v-if="selectedRegistration.program_category?.schedule_mode === 'external'">
+          <v-divider class="my-4" />
+          <h3 class="text-subtitle-1 font-weight-bold mb-2">Assessment Report Archive</h3>
+          <p class="text-body-2 text-medium-emphasis mb-4">
+            This PDF is a private admin archive. Parents receive the report as a hardcopy.
+          </p>
+
+          <v-card v-if="selectedRegistration.assessment_detail?.has_report" variant="tonal" class="mb-4">
+            <v-card-text class="d-flex flex-wrap align-center justify-space-between ga-3">
+              <div>
+                <div class="font-weight-medium">
+                  {{ selectedRegistration.assessment_detail.report_original_name || 'Assessment report.pdf' }}
+                </div>
+                <div class="text-caption text-medium-emphasis">
+                  Uploaded {{ formatDate(selectedRegistration.assessment_detail.report_uploaded_at) }}
+                  <span v-if="selectedRegistration.assessment_detail.report_uploaded_by">
+                    by {{ selectedRegistration.assessment_detail.report_uploaded_by }}
+                  </span>
+                </div>
+              </div>
+              <v-btn
+                color="primary"
+                variant="tonal"
+                prepend-icon="mdi-download"
+                :loading="assessmentReportDownloading"
+                @click="downloadAssessmentReport"
+              >
+                Download PDF
+              </v-btn>
+            </v-card-text>
+          </v-card>
+          <v-alert v-else type="info" variant="tonal" class="mb-4">
+            No assessment report has been archived yet.
+          </v-alert>
+
+          <v-file-input
+            v-model="assessmentReportFile"
+            label="Upload or replace PDF report"
+            accept="application/pdf,.pdf"
+            prepend-icon="mdi-file-pdf-box"
+            variant="outlined"
+            show-size
+            :disabled="assessmentReportUploading"
+            hint="PDF only, maximum 20 MB. Uploading replaces the previous report."
+            persistent-hint
+          />
+          <div class="d-flex justify-end mt-3">
+            <v-btn
+              color="primary"
+              prepend-icon="mdi-upload"
+              :disabled="!assessmentReportFile || assessmentReportUploading"
+              :loading="assessmentReportUploading"
+              @click="uploadAssessmentReport"
+            >
+              {{ selectedRegistration.assessment_detail?.has_report ? 'Replace Report' : 'Upload Report' }}
+            </v-btn>
+          </div>
+        </template>
+
         <v-divider class="my-4" />
       </v-card-text>
     </v-card>
@@ -736,6 +795,9 @@ const pageActionText = ref('Loading...')
 const detailsDialog = ref(false)
 const detailsLoading = ref(false)
 const selectedRegistration = ref(null)
+const assessmentReportFile = ref(null)
+const assessmentReportUploading = ref(false)
+const assessmentReportDownloading = ref(false)
 const billingDialog = ref(false)
 const billingLoading = ref(false)
 const billingGenerationDialog = ref(false)
@@ -1279,15 +1341,69 @@ const openDetails = async (item) => {
   detailsDialog.value = true
   detailsLoading.value = true
   selectedRegistration.value = null
+  assessmentReportFile.value = null
 
   try {
-    const res = await api.get(`/registrations/${item.id}`)
-
-    selectedRegistration.value = res.data.data
+    selectedRegistration.value = await fetchRegistrationDetails(item.id)
   } catch (err) {
     console.error('Error loading registration details:', err)
   } finally {
     detailsLoading.value = false
+  }
+}
+
+const fetchRegistrationDetails = async (registrationId) => {
+  const response = await api.get(`/registrations/${registrationId}`)
+  return response.data.data
+}
+
+const uploadAssessmentReport = async () => {
+  const file = Array.isArray(assessmentReportFile.value)
+    ? assessmentReportFile.value[0]
+    : assessmentReportFile.value
+  if (!file || !selectedRegistration.value) return
+
+  assessmentReportUploading.value = true
+  const formData = new FormData()
+  formData.append('report', file)
+
+  try {
+    await api.post(
+      `/registrations/${selectedRegistration.value.id}/assessment-report`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    )
+    selectedRegistration.value = await fetchRegistrationDetails(selectedRegistration.value.id)
+    assessmentReportFile.value = null
+    showSnackbar('Assessment report uploaded. The previous PDF was replaced.')
+  } catch (error) {
+    showSnackbar(error.response?.data?.message || 'Failed to upload assessment report.', 'error')
+  } finally {
+    assessmentReportUploading.value = false
+  }
+}
+
+const downloadAssessmentReport = async () => {
+  if (!selectedRegistration.value) return
+
+  assessmentReportDownloading.value = true
+  try {
+    const response = await api.get(
+      `/registrations/${selectedRegistration.value.id}/assessment-report`,
+      { responseType: 'blob' },
+    )
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = selectedRegistration.value.assessment_detail?.report_original_name || 'assessment-report.pdf'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+  } catch (error) {
+    showSnackbar(error.response?.data?.message || 'Failed to download assessment report.', 'error')
+  } finally {
+    assessmentReportDownloading.value = false
   }
 }
 

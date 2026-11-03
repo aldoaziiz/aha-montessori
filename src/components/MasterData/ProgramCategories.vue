@@ -45,7 +45,11 @@
             />
           </v-col>
 
-          <v-col v-if="selectedCategoryObject?.supports_tracks" cols="12" md="3">
+          <v-col
+            v-if="selectedCategoryObject?.schedule_mode === 'fixed_slots' && selectedCategoryObject?.supports_tracks"
+            cols="12"
+            md="3"
+          >
             <v-btn
               color="primary"
               variant="tonal"
@@ -57,7 +61,17 @@
             </v-btn>
           </v-col>
         </v-row>
-        <v-data-table :headers="headers" :items="items" :loading="loading" item-value="id">
+        <v-alert v-if="selectedCategoryObject?.schedule_mode === 'external'" type="info" variant="tonal">
+          {{ selectedCategoryObject.name }} appointments are arranged externally. There are no fixed session slots to manage here.
+        </v-alert>
+
+        <v-data-table
+          v-else
+          :headers="headers"
+          :items="items"
+          :loading="loading"
+          item-value="id"
+        >
           <template #item.time="{ item }">{{ item.start_time }} - {{ item.end_time }}</template>
 
           <template #item.is_active="{ item }">
@@ -163,10 +177,12 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import debounce from 'lodash/debounce'
 import api from '@/services/api'
 
 const router = useRouter()
+const route = useRoute()
 const loading = ref(false)
 const items = ref([])
 const search = ref('')
@@ -310,7 +326,13 @@ watch(selectedCategory, () => {
 })
 
 onMounted(async () => {
-  await Promise.all([fetchCategories(), fetchSessionTimes()])
+  await fetchCategories()
+  const categoryFromQuery = Number(route.query.category)
+  if (categoryFromQuery && categories.value.some((category) => Number(category.id) === categoryFromQuery)) {
+    selectedCategory.value = categoryFromQuery
+  } else {
+    await fetchSessionTimes()
+  }
 })
 </script>
 

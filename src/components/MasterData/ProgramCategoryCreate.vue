@@ -23,24 +23,52 @@
           :error-messages="errors.name"
         />
 
+        <v-select
+          v-model="form.schedule_mode"
+          :items="scheduleModes"
+          item-title="title"
+          item-value="value"
+          label="Scheduling Method"
+          variant="outlined"
+          class="mb-6"
+        />
+
+        <v-alert
+          v-if="form.schedule_mode === 'external'"
+          type="info"
+          variant="tonal"
+          class="mb-6"
+        >
+          Appointments for this category are arranged by the admin with AHA CDC. No fixed session slots are needed.
+        </v-alert>
+
         <v-switch
+          v-if="form.schedule_mode === 'fixed_slots'"
           v-model="form.supports_tracks"
           label="Use subject-based tracks and class-specific session slots"
           color="primary"
           inset
           class="mb-3"
         />
-        <v-alert v-if="form.supports_tracks" type="info" variant="tonal" class="mb-6">
+        <v-alert
+          v-if="form.schedule_mode === 'fixed_slots' && form.supports_tracks"
+          type="info"
+          variant="tonal"
+          class="mb-6"
+        >
           Add subjects, Regular/Private modes, classes and their session times after saving this category.
         </v-alert>
 
-        <div v-if="!form.supports_tracks" class="d-flex justify-space-between align-center mb-4">
+        <div
+          v-if="form.schedule_mode === 'fixed_slots' && !form.supports_tracks"
+          class="d-flex justify-space-between align-center mb-4"
+        >
           <h3 class="text-h6">Session Schedules</h3>
 
           <v-btn color="primary" prepend-icon="mdi-plus" @click="addSession">Add Session</v-btn>
         </div>
 
-        <v-table v-if="!form.supports_tracks" density="comfortable">
+        <v-table v-if="form.schedule_mode === 'fixed_slots' && !form.supports_tracks" density="comfortable">
           <thead>
             <tr>
               <th width="100">Order No.</th>
@@ -174,9 +202,15 @@ const saving = ref(false)
 const errors = ref({})
 const leaveDialog = ref(false)
 
+const scheduleModes = [
+  { title: 'Fixed session slots', value: 'fixed_slots' },
+  { title: 'Arranged externally', value: 'external' },
+]
+
 const form = ref({
   name: '',
   supports_tracks: false,
+  schedule_mode: 'fixed_slots',
 })
 
 const sessions = ref([
@@ -218,7 +252,7 @@ const validateForm = () => {
     errors.value.name = ['Category name is required.']
   }
 
-  if (!form.value.supports_tracks) sessions.value.forEach((session, index) => {
+  if (form.value.schedule_mode === 'fixed_slots' && !form.value.supports_tracks) sessions.value.forEach((session, index) => {
     if (!session.session_order) {
       errors.value[`sessions.${index}.session_order`] = ['Required']
     }
@@ -253,14 +287,17 @@ const saveCategory = async () => {
   try {
     const payload = {
       name: form.value.name,
-      supports_tracks: form.value.supports_tracks,
-      sessions: form.value.supports_tracks ? [] : sessions.value,
+      schedule_mode: form.value.schedule_mode,
+      supports_tracks: form.value.schedule_mode === 'fixed_slots' && form.value.supports_tracks,
+      sessions: form.value.schedule_mode === 'external' || form.value.supports_tracks ? [] : sessions.value,
     }
 
     const response = await api.post('/program-categories', payload)
 
-    if (form.value.supports_tracks) {
+    if (form.value.schedule_mode === 'fixed_slots' && form.value.supports_tracks) {
       router.push(`/program-categories/${response.data.data.id}/tracks`)
+    } else if (form.value.schedule_mode === 'external') {
+      router.push(`/program-categories?category=${response.data.data.id}`)
     } else {
       router.push('/program-categories')
     }

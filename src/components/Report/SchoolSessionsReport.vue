@@ -106,7 +106,7 @@ interface ProgramCategory {
 }
 
 interface SchoolSessionRow {
-  id: number
+  id: string
   id_number: string | null
   child_name: string
   program_category: string

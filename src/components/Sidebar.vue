@@ -131,7 +131,7 @@
       </v-list-item>
 
       <!-- report -->
-      <v-list-group v-if="authStore.isAdmin" value="report">
+      <v-list-group v-if="authStore.isAdmin || authStore.isTeacher" value="report">
         <template #activator="{ props }">
           <v-list-item v-bind="props" title="Report" prepend-icon="mdi-chart-bar" />
         </template>
@@ -143,25 +143,32 @@
           @click="setActiveMenu('Report')"
         /> -->
 
-        <v-list-item
+        <v-list-item v-if="authStore.isAdmin"
           title="School Sessions"
           to="/report/school-sessions"
           :active="activeMenu === 'SchoolSessionsReport'"
           @click="setActiveMenu('SchoolSessionsReport')"
         ></v-list-item>
 
-        <v-list-item
+        <v-list-item v-if="authStore.isAdmin"
           title="Monthly Overview"
           to="/report/monthly-overview"
           :active="activeMenu === 'MonthlyOverview'"
           @click="setActiveMenu('MonthlyOverview')"
         ></v-list-item>
 
-        <v-list-item
+        <v-list-item v-if="authStore.isAdmin"
           title="Billing"
           to="/report/billing"
           :active="activeMenu === 'BillingReport'"
           @click="setActiveMenu('BillingReport')"
+        ></v-list-item>
+
+        <v-list-item
+          title="Milestone Progress"
+          to="/report/milestone-progress"
+          :active="activeMenu === 'MilestoneProgressReport'"
+          @click="setActiveMenu('MilestoneProgressReport')"
         ></v-list-item>
       </v-list-group>
     </v-list>

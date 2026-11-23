@@ -237,6 +237,26 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/report/milestone-progress',
+    name: 'report-milestone-progress',
+    component: () => import('@/components/Report/MilestoneReports.vue'),
+    meta: {
+      layout: 'app',
+      requiresAuth: true,
+      allowedRoles: ['admin', 'teacher'],
+    },
+  },
+  {
+    path: '/master-data/milestone-curricula',
+    name: 'milestone-curricula',
+    component: () => import('@/components/MasterData/MilestoneCurricula.vue'),
+    meta: {
+      layout: 'app',
+      requiresAuth: true,
+      allowedRoles: ['admin'],
+    },
+  },
+  {
     path: '/report/school-sessions',
     name: 'report-school-sessions',
     component: () => import('@/components/Report/SchoolSessionsReport.vue'),
